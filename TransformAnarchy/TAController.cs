@@ -96,6 +96,7 @@ namespace TransformAnarchy
             {
                 if (!AllowedBuilderTypes.Contains(builder.GetType()))
                 {
+                    Debug.Log("TA: TAController OnBuilderEnable");
                     OnBuilderDisable();
                     return;
                 }
@@ -120,6 +121,8 @@ namespace TransformAnarchy
             {
                 return;
             }
+
+            Debug.Log("TA: TAController OnBuilderDisable");
 
             UseTransformFromLastBuilder = GizmoEnabled && CurrentBuilder.GetType() == typeof(DecoBuilder);
             StartCoroutine(StoppedBuildingWatch());
@@ -204,7 +207,7 @@ namespace TransformAnarchy
 
         public void SetGizmoEnabled(bool setTo, bool setGizmoCurrentState = false)
         {
-
+            Debug.Log("TA: SetGizmoEnabled " + setTo.ToString());
             GizmoEnabled = setTo;
             GizmoCurrentState = setGizmoCurrentState;
 
@@ -394,8 +397,7 @@ namespace TransformAnarchy
             }
         }
 
-        public void OnEnable()
-        {
+        public void OnEnable() {
 
             Debug.Log("TA: Enabling TAController");
 
@@ -544,7 +546,7 @@ namespace TransformAnarchy
             if (_cachedMaincam == null) return;
             _cachedMaincam.cullingMask = _cachedMaincam.cullingMask & (~Gizmo<PositionalGizmoComponent>.LAYER_MASK);
 
-            Debug.Log($"TA - Disabled");
+            Debug.Log("TA: Disabled");
 
         }
 

@@ -141,6 +141,7 @@ namespace TransformAnarchy
 
                     if (TA.MainController.ForceBuildThisFrame)
                     {
+                        Debug.Log("TA: Force build");
                         TA.MainController.ForceBuildThisFrame = false;
                     }
 

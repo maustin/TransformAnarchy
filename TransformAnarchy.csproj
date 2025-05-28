@@ -339,6 +339,7 @@
     <Content Include="Res\ui_icon_rotationGizmoDisabled.png" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TransformAnarchy\Patches\Builder\BuilderCancelBuildingPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderChangeRotationPatch.cs" />
     <Compile Include="TransformAnarchy\TASettingsData.cs" />
     <Compile Include="TransformAnarchy\Gizmo\Gizmo.cs" />
@@ -354,7 +355,6 @@
     <Compile Include="TransformAnarchy\Patches\ObjectPipetteButton\ObjectPipetteButtonOnObjectSelectedPatch.cs" />
     <Compile Include="TransformAnarchy\Util\PatchUtils.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderMakeValidBuildPositionPatch.cs" />
-    <Compile Include="TransformAnarchy\Patches\Builder\BuilderOnDisablePatch.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderOnEnablePatch.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderUpdatePatch.cs" />
     <Compile Include="TransformAnarchy\Patches\DecoBuilder\DecoBuilderMakeValidBuildPositionPatch.cs" />
