@@ -11,10 +11,9 @@ public class BuilderCancelBuildingPatch {
         Debug.Log("TA: Builder.cancelBuilding Prefix");
 
         if (TransformAnarchy.TA.MainController.GizmoEnabled) {
-            Debug.Log("TA: DO IT");
             TransformAnarchy.TA.MainController.OnBuilderDisable();
         } else {
-            Debug.Log("TA: SKIP IT");
+            Debug.Log("TA: Gizmod disabled, skip");
         }
 
         return true;
