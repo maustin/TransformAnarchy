@@ -339,8 +339,12 @@
     <Content Include="Res\ui_icon_rotationGizmoDisabled.png" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderClearGhostPrefix.cs" />
+    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderOnDisablePrefix.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderCancelBuildingPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderChangeRotationPatch.cs" />
+    <Compile Include="TransformAnarchy\Patches\Builder\BuilderOnAfterBuildCommandsTriggeredPrefix.cs" />
+    <Compile Include="TransformAnarchy\Patches\Builder\BuildOnDisablePrefix.cs" />
     <Compile Include="TransformAnarchy\TASettingsData.cs" />
     <Compile Include="TransformAnarchy\Gizmo\Gizmo.cs" />
     <Compile Include="TransformAnarchy\Gizmo\GizmoComponent.cs" />

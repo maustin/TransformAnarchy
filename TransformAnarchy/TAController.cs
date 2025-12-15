@@ -520,6 +520,7 @@ namespace TransformAnarchy
 
         public void OnDisable()
         {
+            Debug.Log("TA: Controller.OnDisable");
 
             UIToolButton.button.onClick.RemoveListener(ToggleGizmoTool);
             UISpaceButton.button.onClick.RemoveListener(ToggleGizmoSpace);
@@ -545,9 +546,6 @@ namespace TransformAnarchy
             // Clear bit
             if (_cachedMaincam == null) return;
             _cachedMaincam.cullingMask = _cachedMaincam.cullingMask & (~Gizmo<PositionalGizmoComponent>.LAYER_MASK);
-
-            Debug.Log("TA: Disabled");
-
         }
 
         public void OnBeforeInit()

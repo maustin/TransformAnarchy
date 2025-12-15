@@ -49,6 +49,11 @@ namespace TransformAnarchy
                 return true;
             }
 
+            //if (___ghost == null) {
+            //    Debug.Log("TA: MainTAPrefix no ghost!");
+            //    return false;
+            //}
+
             bool refreshRepresentation = false;
 
             // Do early update of TA

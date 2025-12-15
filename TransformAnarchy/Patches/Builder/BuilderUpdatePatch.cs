@@ -30,6 +30,7 @@ namespace TransformAnarchy
             ref Dictionary<BuildableObject, BuildableObject.CanBuild> ___builtObjectsCanBuildCache,
             ref BuildableObject.CanBuild ___canBuild)
         {
+            Debug.Log("TA: Builder.Update prefix");
 
             return BuilderFunctions.MainTAPrefix(
                 ref ___ghost, ref ___ghostPos, ref ___rotation,

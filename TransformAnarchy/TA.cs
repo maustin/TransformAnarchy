@@ -104,6 +104,8 @@ namespace TransformAnarchy
 
         public override void onDisabled()
         {
+            Debug.Log("TA: Disable");
+
             UnregisterHotkeys();
             UnityEngine.Object.Destroy(MainController.gameObject);
 
