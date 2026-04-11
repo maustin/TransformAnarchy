@@ -1,10 +1,9 @@
-﻿using System;
+﻿using Parkitect.UI;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using Parkitect.UI;
-using UnityEngine.Rendering;
 
 namespace TransformAnarchy
 {
@@ -71,6 +70,11 @@ namespace TransformAnarchy
         public bool UseTransformFromLastBuilder = false;
         public bool PipetteWaitForMouseUp = false;
         private bool _alreadyToggledThisFrame = false;
+
+        // Edit-placed-object state
+        private TAObjectPipetteTool _editPipetteTool;
+        private BuildableObject _editTarget;
+        private Builder _editBuilder;
 
         // We cannot directly build the builder. So we instead do this.
         public bool ForceBuildThisFrame = false;
@@ -497,7 +501,85 @@ namespace TransformAnarchy
 
         }
 
-        // basically wait two frames in order to make sure 
+        public void Update()
+        {
+            // Tick the picker tool while it is active
+            if (_editPipetteTool != null && GameController.Instance.isActiveMouseTool(_editPipetteTool))
+            {
+                _editPipetteTool.tick();
+            }
+
+            // Start picker when toggleGizmoOn is pressed and no builder is active
+            if (CurrentBuilder == null && _editPipetteTool == null
+                && !_alreadyToggledThisFrame
+                && InputManager.getKeyDown("toggleGizmoOn")
+                && !UIUtility.isInputFieldFocused())
+            {
+                StartEditPickerMode();
+            }
+        }
+
+        private void StartEditPickerMode()
+        {
+            Debug.Log("TA: Starting edit picker mode");
+            _editPipetteTool = new TAObjectPipetteTool();
+            _editPipetteTool.OnObjectSelected += OnEditPickerObjectSelected;
+            _editPipetteTool.OnRemoved += () => { _editPipetteTool = null; };
+            GameController.Instance.enableMouseTool(_editPipetteTool);
+        }
+
+        private void OnEditPickerObjectSelected(BuildableObject buildableObject)
+        {
+            GameController.Instance.removeMouseTool(_editPipetteTool);
+            // _editPipetteTool is nulled by the OnRemoved handler
+
+            Deco deco = buildableObject as Deco;
+            if (deco == null) return;
+
+            Debug.Log("TA: Edit picker selected: " + deco.getReferenceName());
+            _editTarget = deco;
+            deco.gameObject.SetActive(false);
+            
+            // Position the gizmo at the original object before the builder is created
+            UseTransformFromLastBuilder = true;
+            SetGizmoTransform(deco.logicTransform.position, deco.logicTransform.rotation);
+
+            // Create a builder from the clean prefab so we don't mutate the placed object
+            BuildableObject prefab = ScriptableSingleton<AssetManager>.Instance.getPrefab<BuildableObject>(deco.getReferenceName());
+            _editBuilder = prefab.instantiateBuilder();
+            _editBuilder.snapRotation(deco.logicTransform.rotation * Vector3.forward);
+            _editBuilder.setFixedGhostHeightIfRaised(deco.logicTransform.position);
+            _editBuilder.copySettingsFrom(deco);
+
+            _editBuilder.OnBuildTriggered += OnEditBuilderBuildTriggered;
+            _editBuilder.OnCancelled += OnEditBuilderCancelled;
+        }
+
+        private void OnEditBuilderBuildTriggered()
+        {
+            Debug.Log("TA: OnEditBuilderBuildTriggered");
+            if (_editTarget != null)
+            {
+                UnityEngine.Object.Destroy(_editTarget.gameObject);
+                _editTarget = null;
+            }
+            // Detach so subsequent placements (DecoBuilder stays open) don't re-fire
+            if (_editBuilder != null)
+                _editBuilder.OnBuildTriggered -= OnEditBuilderBuildTriggered;
+        }
+
+        private void OnEditBuilderCancelled()
+        {
+            Debug.Log("TA: OnEditBuilderCancelled");
+            if (_editTarget != null)
+            {
+                _editTarget.gameObject.SetActive(true);
+                _editTarget = null;
+            }
+            _editBuilder = null;
+        }
+
+        // basically wait two frames in order to make sure
         public IEnumerator StoppedBuildingWatch()
         {
             yield return null;
