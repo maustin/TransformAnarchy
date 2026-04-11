@@ -542,6 +542,7 @@ namespace TransformAnarchy
             
             // Position the gizmo at the original object before the builder is created
             UseTransformFromLastBuilder = true;
+            PipetteWaitForMouseUp = true;
             SetGizmoTransform(deco.logicTransform.position, deco.logicTransform.rotation);
 
             // Create a builder from the clean prefab so we don't mutate the placed object
@@ -560,6 +561,7 @@ namespace TransformAnarchy
             Debug.Log("TA: OnEditBuilderBuildTriggered");
             if (_editTarget != null)
             {
+                Debug.Log("TA: Has _editTarget");
                 UnityEngine.Object.Destroy(_editTarget.gameObject);
                 _editTarget = null;
             }
