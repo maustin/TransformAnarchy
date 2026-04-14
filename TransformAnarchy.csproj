@@ -364,6 +364,7 @@
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderUpdatePatch.cs" />
     <Compile Include="TransformAnarchy\Patches\DecoBuilder\DecoBuilderMakeValidBuildPositionPatch.cs" />
     <Compile Include="TransformAnarchy\TA.cs" />
+    <Compile Include="TransformAnarchy\TACoordDisplay.cs" />
     <Compile Include="TransformAnarchy\TAController.cs" />
     <Compile Include="TransformAnarchy\Util\GameObjectExtensions.cs" />
     <Compile Include="TransformAnarchy\Util\HighlightOverlayControllerUtil.cs" />

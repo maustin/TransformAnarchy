@@ -44,6 +44,10 @@ namespace TransformAnarchy
 
         public GameObject UITransform;
 
+        // Coordinate text-entry display (separate GO so it can be positioned independently)
+        private GameObject _coordDisplayGO;
+        private TACoordDisplay _coordDisplay;
+
         public struct UIButton
         {
             public Button button;
@@ -332,7 +336,20 @@ namespace TransformAnarchy
             UISpaceButton.tooltip.text = (CurrentSpace == ToolSpace.LOCAL) ? "Global space" : "Local space";
 
             // Main update
-            UITransform.SetActive(CurrentBuilder != null && GizmoEnabled);
+            bool showUI = CurrentBuilder != null && GizmoEnabled;
+            UITransform.SetActive(showUI);
+
+            if (_coordDisplayGO != null)
+            {
+                _coordDisplayGO.SetActive(showUI);
+                if (showUI && _coordDisplay != null)
+                {
+                    if (CurrentTool == Tool.MOVE)
+                        _coordDisplay.ShowPositionMode();
+                    else
+                        _coordDisplay.ShowRotationMode();
+                }
+            }
         }
 
         public void UpdateUIPosition()
@@ -344,9 +361,16 @@ namespace TransformAnarchy
             }
 
             // left and up relative to cam from position of gizmo, with width calced
-            UITransform.transform.position = _cachedMaincam.WorldToScreenPoint(
+            Vector3 uiScreenPos = _cachedMaincam.WorldToScreenPoint(
                 positionalGizmo.transform.position +
                 _cachedMaincam.transform.rotation * (new Vector3(0.9f, 0.9f, 0) * BuilderSize));
+
+            UITransform.transform.position = uiScreenPos;
+
+            if (_coordDisplayGO != null)
+            {
+                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(190f, -110f, 0f);
+            }
 
         }
 
@@ -495,6 +519,15 @@ namespace TransformAnarchy
             UIGizmoToggleButton.button.onClick.AddListener(() => SetGizmoEnabled(!GizmoEnabled));
             UIResetRotationButton.button.onClick.AddListener(ResetGizmoRotation);
 
+            // Coordinate display panel (sibling of UITransform so it can be positioned independently)
+            _coordDisplayGO = new GameObject("TA_CoordDisplay");
+            _coordDisplayGO.transform.SetParent(Parkitect.UI.UIWorldOverlayController.Instance.transform, false);
+            _coordDisplay = _coordDisplayGO.AddComponent<TACoordDisplay>();
+            _coordDisplay.Initialize();
+            _coordDisplay.OnPositionCommit += OnCoordPositionCommit;
+            _coordDisplay.OnRotationCommit += OnCoordRotationCommit;
+            _coordDisplayGO.SetActive(false);
+
             Debug.Log("TA: transform Anarchy initialized");
 
             UpdateUIContent();
@@ -602,6 +635,16 @@ namespace TransformAnarchy
             _alreadyToggledThisFrame = false;
         }
 
+        private void OnCoordPositionCommit(Vector3 newPos)
+        {
+            SetGizmoTransform(newPos, rotationalGizmo.transform.rotation);
+        }
+
+        private void OnCoordRotationCommit(Vector3 newEuler)
+        {
+            SetGizmoTransform(positionalGizmo.transform.position, Quaternion.Euler(newEuler));
+        }
+
         public void OnDisable()
         {
             Debug.Log("TA: Controller.OnDisable");
@@ -614,6 +657,18 @@ namespace TransformAnarchy
             UIBuildButton.button.onClick.RemoveListener(() => ForceBuildThisFrame = true && !IsEditingOrigin);
             UIGizmoToggleButton.button.onClick.RemoveListener(() => SetGizmoEnabled(!GizmoEnabled));
             UIResetRotationButton.button.onClick.RemoveListener(ResetGizmoRotation);
+
+            if (_coordDisplay != null)
+            {
+                _coordDisplay.OnPositionCommit -= OnCoordPositionCommit;
+                _coordDisplay.OnRotationCommit -= OnCoordRotationCommit;
+                _coordDisplay = null;
+            }
+            if (_coordDisplayGO != null)
+            {
+                Destroy(_coordDisplayGO);
+                _coordDisplayGO = null;
+            }
 
             Destroy(UITransform);
 
@@ -814,6 +869,13 @@ namespace TransformAnarchy
 
             // Update UI position
             UpdateUIPosition();
+
+            // Feed current gizmo transform into the coordinate display
+            if (_coordDisplay != null && _coordDisplayGO != null && _coordDisplayGO.activeSelf)
+            {
+                _coordDisplay.UpdatePosition(positionalGizmo.transform.position);
+                _coordDisplay.UpdateRotation(rotationalGizmo.transform.rotation.eulerAngles);
+            }
 
         }
     }
