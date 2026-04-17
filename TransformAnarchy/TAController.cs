@@ -700,6 +700,8 @@ namespace TransformAnarchy
 
         private void OnCoordPositionCommit(Vector3 newPos)
         {
+            if (CurrentSpace == ToolSpace.LOCAL)
+                newPos = rotationalGizmo.transform.rotation * newPos;
             SetGizmoTransform(newPos, rotationalGizmo.transform.rotation);
         }
 
@@ -945,7 +947,15 @@ namespace TransformAnarchy
             // Feed current gizmo transform into the coordinate display
             if (_coordDisplay != null && _coordDisplayGO != null && _coordDisplayGO.activeSelf)
             {
-                _coordDisplay.UpdatePosition(positionalGizmo.transform.position);
+                if (CurrentSpace == ToolSpace.LOCAL)
+                {
+                    var rot = rotationalGizmo.transform.rotation;
+                    _coordDisplay.UpdatePosition(Quaternion.Inverse(rot) * positionalGizmo.transform.position);
+                }
+                else
+                {
+                    _coordDisplay.UpdatePosition(positionalGizmo.transform.position);
+                }
                 _coordDisplay.UpdateRotation(rotationalGizmo.transform.rotation.eulerAngles);
             }
 
