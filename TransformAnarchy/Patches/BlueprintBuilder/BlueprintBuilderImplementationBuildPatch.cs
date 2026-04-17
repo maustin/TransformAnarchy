@@ -32,13 +32,19 @@ namespace TransformAnarchy
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var lookRotation = AccessTools.Method(typeof(Quaternion), "LookRotation", new[] { typeof(Vector3) });
-            var helper = AccessTools.Method(typeof(BlueprintBuilderImplementationBuildPatch), "GetBlueprintRotation");
+            var rotateAroundPivot = AccessTools.Method(typeof(ExtensionMethods), "RotateAroundPivot",
+                new[] { typeof(Vector3), typeof(Vector3), typeof(Quaternion) });
+            var rotHelper = AccessTools.Method(typeof(BlueprintBuilderImplementationBuildPatch), "GetBlueprintRotation");
+            var scaleHelper = AccessTools.Method(typeof(BlueprintBuilderImplementationBuildPatch), "ScalePosition");
 
             foreach (var instr in instructions)
             {
                 yield return instr.Calls(lookRotation)
-                    ? new CodeInstruction(OpCodes.Call, helper)
+                    ? new CodeInstruction(OpCodes.Call, rotHelper)
                     : instr;
+
+                if (instr.Calls(rotateAroundPivot))
+                    yield return new CodeInstruction(OpCodes.Call, scaleHelper);
             }
         }
 
@@ -51,6 +57,35 @@ namespace TransformAnarchy
                 return rot;
             }
             return Quaternion.LookRotation(forward);
+        }
+
+        public static Vector3 ScalePosition(Vector3 position)
+        {
+            return BuilderFunctions.PendingBlueprintScale.HasValue
+                ? position * BuilderFunctions.PendingBlueprintScale.Value
+                : position;
+        }
+    }
+
+    [HarmonyPatch(typeof(BlueprintBuilderImplementation), "onAfterBuild")]
+    class BlueprintBuilderImplementationAfterBuildPatch
+    {
+        [HarmonyPostfix]
+        static void Postfix(List<BuildableObject> builtObjectInstances)
+        {
+            if (!BuilderFunctions.AppliedBlueprintScale.HasValue) return;
+            float scale = BuilderFunctions.AppliedBlueprintScale.Value;
+            BuilderFunctions.AppliedBlueprintScale = null;
+
+            if (scale == 1.0f) return;
+
+            foreach (var obj in builtObjectInstances)
+            {
+                var customSize = obj.GetComponentInChildren<CustomSize>();
+                if (customSize == null) continue;
+                float newSize = Mathf.Clamp(customSize.getValue() * scale, customSize.minSize, customSize.maxSize);
+                customSize.setValue(newSize);
+            }
         }
     }
 }

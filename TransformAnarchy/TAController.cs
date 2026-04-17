@@ -76,6 +76,10 @@ namespace TransformAnarchy
         public UIButton UIPivotEdit;
         public UIButton UIPivotCancel;
 
+        // Blueprint scale
+        private float _blueprintScale = 1.0f;
+        public float BlueprintScale => _blueprintScale;
+
         // Flags
         public bool UseTransformFromLastBuilder = false;
         public bool PipetteWaitForMouseUp = false;
@@ -151,6 +155,7 @@ namespace TransformAnarchy
             CurrentTool = Tool.MOVE;
             CurrentSpace = ToolSpace.LOCAL;
             _coordDisplayVisible = false;
+            _blueprintScale = 1f;
 
             ClearBuilderGrid();
             UpdateUIContent();
@@ -867,15 +872,19 @@ namespace TransformAnarchy
             }
 
             // Reimplement size hotkeys directly
-            if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
+            if (CurrentBuilder is BlueprintBuilder)
             {
-                BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { 0.01f });
-
-
+                if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
+                    _blueprintScale = Mathf.Min(10f, _blueprintScale + 0.01f);
+                else if (InputManager.getKey("BuildingDecreaseObjectSize") && !UIUtility.isInputFieldFocused())
+                    _blueprintScale = Mathf.Max(0.1f, _blueprintScale - 0.01f);
             }
-            else if (InputManager.getKey("BuildingDecreaseObjectSize") && !UIUtility.isInputFieldFocused())
+            else
             {
-                BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { -0.01f });
+                if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
+                    BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { 0.01f });
+                else if (InputManager.getKey("BuildingDecreaseObjectSize") && !UIUtility.isInputFieldFocused())
+                    BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { -0.01f });
             }
 
             // Keybinds
