@@ -390,12 +390,12 @@ namespace TransformAnarchy
 
             if (_coordDisplayToggleGO != null)
             {
-                _coordDisplayToggleGO.transform.position = uiScreenPos + new Vector3(75f, -53f, 0f);
+                _coordDisplayToggleGO.transform.position = uiScreenPos + new Vector3(78f, -53f, 0f);
             }
 
             if (_coordDisplayGO != null)
             {
-                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(215f, -135f, 0f);
+                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(200f, -153f, 0f);
             }
 
         }
@@ -568,6 +568,7 @@ namespace TransformAnarchy
 
             Image toggleBg = _coordDisplayToggleGO.AddComponent<Image>();
             toggleBg.sprite = TA.InfoPipCircleSprite;
+            toggleBg.color = new Color(0.65f, 1f, 1f, 0.45f);
 
             Button toggleBtn = _coordDisplayToggleGO.AddComponent<Button>();
             toggleBtn.targetGraphic = toggleBg;
