@@ -37,6 +37,8 @@ namespace TransformAnarchy
         public static FieldInfo onlyBuildOneField = AccessTools.Field(typeof(Builder), "onlyBuildOne");
 
         public static Quaternion? PendingBlueprintRotation;
+        public static float? PendingBlueprintScale;
+        public static float? AppliedBlueprintScale;
 
         public static bool MainTAPrefix(
                 ref GameObject ___ghost, ref Vector3 ___ghostPos, ref Quaternion ___rotation,
@@ -119,6 +121,8 @@ namespace TransformAnarchy
                 // Update visual ghost position
                 ___ghost.transform.position = curPos;
                 ___ghost.transform.rotation = curRot;
+                if (b is BlueprintBuilder)
+                    ___ghost.transform.localScale = Vector3.one * TA.MainController.BlueprintScale;
 
                 // Update place at ghost position
                 ___ghostPos = curPos;
@@ -162,6 +166,8 @@ namespace TransformAnarchy
                         {
                             onlyBuildOneField.SetValue(b, false);
                             PendingBlueprintRotation = curRot;
+                            PendingBlueprintScale = TA.MainController.BlueprintScale;
+                            AppliedBlueprintScale = TA.MainController.BlueprintScale;
                         }
 
                         PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
@@ -170,6 +176,8 @@ namespace TransformAnarchy
                         {
                             onlyBuildOneField.SetValue(b, true);
                             PendingBlueprintRotation = null;
+                            PendingBlueprintScale = null;
+                            // AppliedBlueprintScale intentionally left set; cleared in onAfterBuild postfix
                         }
                     }
                     else
