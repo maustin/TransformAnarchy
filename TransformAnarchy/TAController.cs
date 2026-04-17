@@ -1,4 +1,5 @@
-﻿using Parkitect.UI;
+﻿using HarmonyLib;
+using Parkitect.UI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -639,12 +640,15 @@ namespace TransformAnarchy
             // Position the gizmo at the original object before the builder is created
             UseTransformFromLastBuilder = true;
             PipetteWaitForMouseUp = true;
+            SetGizmoEnabled(true);
             SetGizmoTransform(deco.logicTransform.position, deco.logicTransform.rotation);
 
             // Create a builder from the clean prefab so we don't mutate the placed object
             BuildableObject prefab = ScriptableSingleton<AssetManager>.Instance.getPrefab<BuildableObject>(deco.getReferenceName());
             _editBuilder = prefab.instantiateBuilder();
-            _editBuilder.snapRotation(deco.logicTransform.rotation * Vector3.forward);
+            Traverse editBuilderTrv = Traverse.Create(_editBuilder);
+            editBuilderTrv.Field("rotation").SetValue(deco.logicTransform.rotation);
+            editBuilderTrv.Field("ghostPos").SetValue(deco.logicTransform.position);
             _editBuilder.setFixedGhostHeightIfRaised(deco.logicTransform.position);
             _editBuilder.copySettingsFrom(deco);
 
