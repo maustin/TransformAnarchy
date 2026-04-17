@@ -55,10 +55,14 @@ namespace TransformAnarchy
             rt.anchorMin   = new Vector2(0.5f, 0.5f);
             rt.anchorMax   = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta   = new Vector2(150f, 76f);
+            rt.sizeDelta   = new Vector2(80f, 76f);
 
             var bg = panel.AddComponent<Image>();
             bg.color = new Color(0.3f, 0.5f, 0.5f, 0.8f);
+
+            var outline = panel.AddComponent<Outline>();
+            outline.effectColor    = new Color(1f, 1f, 1f, 0.5f);
+            outline.effectDistance = new Vector2(1f, -1f);
 
             var vlg = panel.AddComponent<VerticalLayoutGroup>();
             vlg.padding            = new RectOffset(4, 4, 4, 4);
@@ -109,7 +113,6 @@ namespace TransformAnarchy
             // Input field
             var field = CreateInputField(row.transform, axisLabel);
             var fieldLE = field.gameObject.AddComponent<LayoutElement>();
-            fieldLE.flexibleWidth   = 1f;
             fieldLE.minHeight       = 22f;
             fieldLE.preferredHeight = 22f;
 
@@ -121,7 +124,7 @@ namespace TransformAnarchy
             var go = new GameObject(name + "_Field");
             go.transform.SetParent(parent, false);
             var rt = go.AddComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(100f, 22f);
+            rt.sizeDelta = new Vector2(50f, 22f);
 
             var bg = go.AddComponent<Image>();
             bg.color = new Color(0.35f, 0.35f, 0.35f, 1f);
@@ -161,8 +164,36 @@ namespace TransformAnarchy
             phText.text      = "0.00";
             phText.alignment = TextAnchor.MiddleRight;
             field.placeholder = phText;
+            field.navigation  = new Navigation { mode = Navigation.Mode.None };
 
             return field;
+        }
+
+        // ── Input handling ────────────────────────────────────────────────────
+
+        private void Update()
+        {
+            if (!Input.GetKeyDown(KeyCode.Tab)) return;
+
+            InputField[] fields = null;
+            if (_positionPanel != null && _positionPanel.activeSelf)
+                fields = _positionFields;
+            else if (_rotationPanel != null && _rotationPanel.activeSelf)
+                fields = _rotationFields;
+            if (fields == null) return;
+
+            bool backward = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            int step = backward ? 2 : 1; // +2 mod 3 == -1 mod 3
+
+            for (int i = 0; i < 3; i++)
+            {
+                if (fields[i] == null || !fields[i].isFocused) continue;
+                fields[i].DeactivateInputField();
+                var next = fields[(i + step) % 3];
+                next.ActivateInputField();
+                next.Select();
+                break;
+            }
         }
 
         // ── Event wiring ─────────────────────────────────────────────────────
