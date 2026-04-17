@@ -369,6 +369,11 @@
     <Compile Include="TransformAnarchy\TAController.cs" />
     <Compile Include="TransformAnarchy\Util\GameObjectExtensions.cs" />
     <Compile Include="TransformAnarchy\Util\HighlightOverlayControllerUtil.cs" />
+    <Compile Include="TransformAnarchy\Gizmo\ScaleGizmo.cs" />
+    <Compile Include="TransformAnarchy\Gizmo\ScaleGizmoComponent.cs" />
+    <Compile Include="TransformAnarchy\Patches\BuildablePostBuildPatch.cs" />
+    <Compile Include="TransformAnarchy\Patches\ParkEventFixedStartPatch.cs" />
+    <Compile Include="TransformAnarchy\TAScale.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include=".git\objects\info\" />

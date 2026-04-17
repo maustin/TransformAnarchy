@@ -37,6 +37,7 @@ namespace TransformAnarchy
 
         public static Sprite MoveSprite;
         public static Sprite RotateSprite;
+        public static Sprite ScaleSprite;
         public static Sprite LocalSprite;
         public static Sprite GlobalSprite;
         public static Sprite OriginMoveSprite;
@@ -107,6 +108,18 @@ namespace TransformAnarchy
             Debug.Log("TA: Loaded assetbundle!");
 
             loadLooseTextures();
+
+            // Scale button uses a loose PNG
+            var scaleTex = GetLooseTexture(LOOSE_TEXTURES.SCALE_BUTTON);
+            if (scaleTex != null)
+            {
+                ScaleSprite = Sprite.Create(scaleTex, new Rect(0, 0, scaleTex.width, scaleTex.height), new Vector2(0.5f, 0.5f));
+            }
+            else
+            {
+                // Fallback so the UI stays functional even if the loose texture is missing
+                ScaleSprite = MoveSprite;
+            }
 
             // Actually loading TA
             Debug.Log("TA: Initing Main Transform Anarchy handler");

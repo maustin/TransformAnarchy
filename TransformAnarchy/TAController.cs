@@ -29,14 +29,20 @@ namespace TransformAnarchy
         public enum Tool
         {
             MOVE,
-            ROTATE
+            ROTATE,
+            SCALE
         };
 
         public Tool CurrentTool = Tool.MOVE;
         public ToolSpace CurrentSpace = ToolSpace.LOCAL;
 
+        // Per-axis scale being composed for the next build. Fed into the ghost every frame
+        // and applied to placed objects via the Builder.buildObjects postfix.
+        public Vector3 CurrentScale = Vector3.one;
+
         public PositionalGizmo positionalGizmo;
         public RotationalGizmo rotationalGizmo;
+        public ScaleGizmo scaleGizmo;
         private Camera _cachedMaincam;
         private Camera gizmoCamera;
 
@@ -123,6 +129,14 @@ namespace TransformAnarchy
             }
 
             CurrentBuilder = builder;
+
+            // Scale is not supported on FlatRides or Blueprints
+            if (CurrentTool == Tool.SCALE && !(builder == null || builder is DecoBuilder || builder is BlueprintBuilder))
+            {
+                CurrentTool = Tool.MOVE;
+            }
+            CurrentScale = Vector3.one;
+
             UpdateUIContent();
             SetGizmoCamera();
 
@@ -148,8 +162,10 @@ namespace TransformAnarchy
             GizmoCurrentState = false;
             positionalGizmo.SetActiveGizmo(false);
             rotationalGizmo.SetActiveGizmo(false);
+            scaleGizmo.SetActiveGizmo(false);
             CurrentTool = Tool.MOVE;
             CurrentSpace = ToolSpace.LOCAL;
+            CurrentScale = Vector3.one;
             _coordDisplayVisible = false;
 
             ClearBuilderGrid();
@@ -233,6 +249,7 @@ namespace TransformAnarchy
                 _gizmoHelperChild.transform.localPosition = Vector3.zero;
                 _gizmoHelperChild.transform.localRotation = Quaternion.identity;
                 IsEditingOrigin = false;
+                CurrentScale = Vector3.one;
             }
 
             StartCoroutine(WaitToAllowToggle());
@@ -297,6 +314,11 @@ namespace TransformAnarchy
             UpdateUIContent();
         }
 
+        public bool ScaleToolAvailable()
+        {
+            return CurrentBuilder is DecoBuilder;
+        }
+
         public void ToggleGizmoTool()
         {
             switch (CurrentTool)
@@ -305,6 +327,9 @@ namespace TransformAnarchy
                     CurrentTool = Tool.ROTATE;
                     break;
                 case Tool.ROTATE:
+                    CurrentTool = ScaleToolAvailable() ? Tool.SCALE : Tool.MOVE;
+                    break;
+                case Tool.SCALE:
                     CurrentTool = Tool.MOVE;
                     break;
             }
@@ -344,11 +369,28 @@ namespace TransformAnarchy
             UIPivotEdit.icon.sprite = (IsEditingOrigin) ? TA.TickSprite : TA.OriginMoveSprite;
             UIPivotEdit.tooltip.text = (IsEditingOrigin) ? "Keep pivot changes" : "Change pivot";
 
-            // Icon updates
-            UIToolButton.icon.sprite = (CurrentTool == Tool.MOVE) ? TA.RotateSprite : TA.MoveSprite;
-            UIToolButton.tooltip.text = (CurrentTool == Tool.MOVE) ? "Rotate tool" : "Move tool";
+            // Tool icon shows the NEXT tool in the cycle.
+            switch (CurrentTool)
+            {
+                case Tool.MOVE:
+                    UIToolButton.icon.sprite = TA.RotateSprite;
+                    UIToolButton.tooltip.text = "Rotate tool";
+                    break;
+                case Tool.ROTATE:
+                    UIToolButton.icon.sprite = ScaleToolAvailable() ? TA.ScaleSprite : TA.MoveSprite;
+                    UIToolButton.tooltip.text = ScaleToolAvailable() ? "Scale tool" : "Move tool";
+                    break;
+                case Tool.SCALE:
+                    UIToolButton.icon.sprite = TA.MoveSprite;
+                    UIToolButton.tooltip.text = "Move tool";
+                    break;
+            }
+
             UISpaceButton.icon.sprite = (CurrentSpace == ToolSpace.LOCAL) ? TA.GlobalSprite : TA.LocalSprite;
             UISpaceButton.tooltip.text = (CurrentSpace == ToolSpace.LOCAL) ? "Global space" : "Local space";
+            // Scale is always local-space, so the space toggle isn't meaningful then.
+            UISpaceButton.button.gameObject.SetActive(CurrentTool != Tool.SCALE);
+            UIResetRotationButton.button.gameObject.SetActive(true);
 
             // Main update
             bool showUI = CurrentBuilder != null && GizmoEnabled;
@@ -366,10 +408,12 @@ namespace TransformAnarchy
                 _coordDisplayGO.SetActive(showUI && _coordDisplayVisible);
                 if (showUI && _coordDisplayVisible && _coordDisplay != null)
                 {
-                    if (CurrentTool == Tool.MOVE)
-                        _coordDisplay.ShowPositionMode();
-                    else
-                        _coordDisplay.ShowRotationMode();
+                    switch (CurrentTool)
+                    {
+                        case Tool.MOVE:   _coordDisplay.ShowPositionMode(); break;
+                        case Tool.ROTATE: _coordDisplay.ShowRotationMode(); break;
+                        case Tool.SCALE:  _coordDisplay.ShowScaleMode();    break;
+                    }
                 }
             }
         }
@@ -411,9 +455,11 @@ namespace TransformAnarchy
 
         private void UpdateGizmoTransforms()
         {
-            // Keep both gizmos sync'd with eachother
+            // Keep all gizmos sync'd with each other
             rotationalGizmo.UpdatePosition(positionalGizmo.transform.position);
             positionalGizmo.UpdateRotation(rotationalGizmo.transform.rotation);
+            scaleGizmo.UpdatePosition(positionalGizmo.transform.position);
+            scaleGizmo.UpdateRotation(rotationalGizmo.transform.rotation);
 
             _gizmoHelperParent.transform.position = positionalGizmo.transform.position;
             _gizmoHelperParent.transform.rotation = rotationalGizmo.transform.rotation;
@@ -480,11 +526,20 @@ namespace TransformAnarchy
             rotationalGizmo.SpawnIn = TA.RingGO;
             rotationalGizmo.OnCreate();
 
+            // Scale Gizmo (reuses the arrow mesh as handles)
+            scaleGizmo = (new GameObject()).AddComponent<ScaleGizmo>();
+            scaleGizmo.gameObject.name = "Scale Gizmo";
+            scaleGizmo.SpawnIn = TA.ArrowGO;
+            scaleGizmo.OnCreate();
+
             positionalGizmo.OnDuringDrag.AddListener(a => SetGizmoMoving(true));
             positionalGizmo.OnEndDrag.AddListener(a => StartCoroutine(WaitToSetMovingOff()));
 
             rotationalGizmo.OnDuringDrag.AddListener(a => SetGizmoMoving(true));
             rotationalGizmo.OnEndDrag.AddListener(a => StartCoroutine(WaitToSetMovingOff()));
+
+            scaleGizmo.OnDuringDrag.AddListener(a => SetGizmoMoving(true));
+            scaleGizmo.OnEndDrag.AddListener(a => StartCoroutine(WaitToSetMovingOff()));
 
             // Ui window time.
             TA.UiHolder.SetActive(false);
@@ -553,6 +608,7 @@ namespace TransformAnarchy
             _coordDisplay.Initialize();
             _coordDisplay.OnPositionCommit += OnCoordPositionCommit;
             _coordDisplay.OnRotationCommit += OnCoordRotationCommit;
+            _coordDisplay.OnScaleCommit    += OnCoordScaleCommit;
             _coordDisplayGO.SetActive(false);
 
             // Coord display toggle button
@@ -714,6 +770,14 @@ namespace TransformAnarchy
             SetGizmoTransform(positionalGizmo.transform.position, Quaternion.Euler(newEuler));
         }
 
+        private void OnCoordScaleCommit(Vector3 newScale)
+        {
+            CurrentScale = new Vector3(
+                Mathf.Clamp(newScale.x, ScaleGizmo.MIN_SCALE, ScaleGizmo.MAX_SCALE),
+                Mathf.Clamp(newScale.y, ScaleGizmo.MIN_SCALE, ScaleGizmo.MAX_SCALE),
+                Mathf.Clamp(newScale.z, ScaleGizmo.MIN_SCALE, ScaleGizmo.MAX_SCALE));
+        }
+
         public void OnDisable()
         {
             Debug.Log("TA: Controller.OnDisable");
@@ -731,6 +795,7 @@ namespace TransformAnarchy
             {
                 _coordDisplay.OnPositionCommit -= OnCoordPositionCommit;
                 _coordDisplay.OnRotationCommit -= OnCoordRotationCommit;
+                _coordDisplay.OnScaleCommit -= OnCoordScaleCommit;
                 _coordDisplay = null;
             }
             if (_coordDisplayGO != null)
@@ -754,9 +819,12 @@ namespace TransformAnarchy
             positionalGizmo.OnEndDrag.RemoveListener(a => StartCoroutine(WaitToSetMovingOff()));
             rotationalGizmo.OnDuringDrag.RemoveListener(a => SetGizmoMoving(true));
             rotationalGizmo.OnEndDrag.RemoveListener(a => StartCoroutine(WaitToSetMovingOff()));
+            scaleGizmo.OnDuringDrag.RemoveListener(a => SetGizmoMoving(true));
+            scaleGizmo.OnEndDrag.RemoveListener(a => StartCoroutine(WaitToSetMovingOff()));
 
             Destroy(positionalGizmo.gameObject);
             Destroy(rotationalGizmo.gameObject);
+            Destroy(scaleGizmo.gameObject);
 
             ClearBuilderGrid();
 
@@ -815,6 +883,7 @@ namespace TransformAnarchy
             {
                 positionalGizmo.SetActiveGizmo(false);
                 rotationalGizmo.SetActiveGizmo(false);
+                scaleGizmo.SetActiveGizmo(false);
             }
         }
 
@@ -905,6 +974,7 @@ namespace TransformAnarchy
             {
                 positionalGizmo.SetActiveGizmo(true);
                 rotationalGizmo.SetActiveGizmo(false);
+                scaleGizmo.SetActiveGizmo(false);
                 positionalGizmo.CurrentRotationMode = CurrentSpace;
                 rotationalGizmo.CurrentRotationMode = CurrentSpace;
 
@@ -923,6 +993,7 @@ namespace TransformAnarchy
             {
                 positionalGizmo.SetActiveGizmo(false);
                 rotationalGizmo.SetActiveGizmo(true);
+                scaleGizmo.SetActiveGizmo(false);
                 positionalGizmo.CurrentRotationMode = CurrentSpace;
                 rotationalGizmo.CurrentRotationMode = CurrentSpace;
 
@@ -936,6 +1007,23 @@ namespace TransformAnarchy
                     _gizmoHelperParent.transform.rotation = rotationalGizmo.transform.rotation;
                     _gizmoHelperChild.transform.position = lastFullPosition;
                     _gizmoHelperChild.transform.rotation = lastFullRotation;
+                }
+            }
+            else if (CurrentTool == Tool.SCALE && GizmoEnabled)
+            {
+                // Defensive: skip scale if the builder doesn't support it (e.g. FlatRideBuilder)
+                if (!ScaleToolAvailable())
+                {
+                    CurrentTool = Tool.MOVE;
+                    UpdateUIContent();
+                }
+                else
+                {
+                    positionalGizmo.SetActiveGizmo(false);
+                    rotationalGizmo.SetActiveGizmo(false);
+                    scaleGizmo.SetActiveGizmo(true);
+
+                    scaleGizmo.OnDragCheck();
                 }
             }
 
@@ -961,6 +1049,7 @@ namespace TransformAnarchy
                     _coordDisplay.UpdatePosition(positionalGizmo.transform.position);
                 }
                 _coordDisplay.UpdateRotation(rotationalGizmo.transform.rotation.eulerAngles);
+                _coordDisplay.UpdateScale(CurrentScale);
             }
 
         }

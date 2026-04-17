@@ -38,6 +38,12 @@ namespace TransformAnarchy
 
         public static Quaternion? PendingBlueprintRotation;
 
+        // Per-axis scale to apply to the next build.
+        // Set immediately before invoking buildObjects.
+        // Consumed by the BuildablePostBuildPatch postfix on each placed object.
+        // Reset to null after the build call returns.
+        public static Vector3? PendingBuildScale;
+
         public static bool MainTAPrefix(
                 ref GameObject ___ghost, ref Vector3 ___ghostPos, ref Quaternion ___rotation,
                 ref Vector3 ___forward, ref List<BuildableObject> ___actualBuiltObjects,
@@ -120,6 +126,14 @@ namespace TransformAnarchy
                 ___ghost.transform.position = curPos;
                 ___ghost.transform.rotation = curRot;
 
+                // Apply per-axis scale to the ghost preview.
+                // Composes multiplicatively with whatever CustomSize already on the child buildable's localScale since this is the ghost root (parent container).
+                Vector3 curScale = TA.MainController.CurrentScale;
+                if (___ghost.transform.localScale != curScale)
+                {
+                    ___ghost.transform.localScale = curScale;
+                }
+
                 // Update place at ghost position
                 ___ghostPos = curPos;
                 ___rotation = curRot;
@@ -164,7 +178,17 @@ namespace TransformAnarchy
                             PendingBlueprintRotation = curRot;
                         }
 
-                        PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
+                        // Set the per-axis scale override so the post-build patch applies it to every placed BuildableObject.
+                        PendingBuildScale = TA.MainController.CurrentScale;
+
+                        try
+                        {
+                            PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
+                        }
+                        finally
+                        {
+                            PendingBuildScale = null;
+                        }
 
                         if (isBlueprintBuilder)
                         {

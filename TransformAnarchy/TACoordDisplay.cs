@@ -12,18 +12,24 @@ namespace TransformAnarchy
     {
         public event Action<Vector3> OnPositionCommit;
         public event Action<Vector3> OnRotationCommit;
+        public event Action<Vector3> OnScaleCommit;
 
         private readonly InputField[] _positionFields = new InputField[3];
         private readonly InputField[] _rotationFields = new InputField[3];
+        private readonly InputField[] _scaleFields = new InputField[3];
         private GameObject _positionPanel;
         private GameObject _rotationPanel;
+        private GameObject _scalePanel;
 
         // Last-known values; used to restore a field if the user types invalid input.
         private Vector3 _lastPosition;
         private Vector3 _lastEuler;
+        private Vector3 _lastScale = Vector3.one;
 
         // When true, programmatic text changes won't trigger commit callbacks.
         private bool _suppressCallbacks;
+
+        private enum Mode { Position, Rotation, Scale }
 
         public void Initialize()
         {
@@ -31,16 +37,23 @@ namespace TransformAnarchy
             _positionFields[0] = AddRow(_positionPanel.transform, "X", new Color(1f, 1f, 1f));
             _positionFields[1] = AddRow(_positionPanel.transform, "Y", new Color(1f, 1f, 1f));
             _positionFields[2] = AddRow(_positionPanel.transform, "Z", new Color(1f, 1f, 1f));
-            WireFields(_positionFields, isPosition: true);
+            WireFields(_positionFields, Mode.Position);
 
             _rotationPanel = CreatePanel("RotPanel");
             _rotationFields[0] = AddRow(_rotationPanel.transform, "X", new Color(1f, 1f, 1f));
             _rotationFields[1] = AddRow(_rotationPanel.transform, "Y", new Color(1f, 1f, 1f));
-            _rotationFields[2] = AddRow(_rotationPanel.transform, "Z", new Color(1f, 1f,  1f));
-            WireFields(_rotationFields, isPosition: false);
+            _rotationFields[2] = AddRow(_rotationPanel.transform, "Z", new Color(1f, 1f, 1f));
+            WireFields(_rotationFields, Mode.Rotation);
+
+            _scalePanel = CreatePanel("ScalePanel");
+            _scaleFields[0] = AddRow(_scalePanel.transform, "X", new Color(1f, 1f, 1f));
+            _scaleFields[1] = AddRow(_scalePanel.transform, "Y", new Color(1f, 1f, 1f));
+            _scaleFields[2] = AddRow(_scalePanel.transform, "Z", new Color(1f, 1f, 1f));
+            WireFields(_scaleFields, Mode.Scale);
 
             _positionPanel.SetActive(false);
             _rotationPanel.SetActive(false);
+            _scalePanel.SetActive(false);
         }
 
         // ── Panel / row builders ──────────────────────────────────────────────
@@ -176,6 +189,8 @@ namespace TransformAnarchy
                 fields = _positionFields;
             else if (_rotationPanel != null && _rotationPanel.activeSelf)
                 fields = _rotationFields;
+            else if (_scalePanel != null && _scalePanel.activeSelf)
+                fields = _scaleFields;
             if (fields == null) return;
 
             bool backward = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
@@ -194,7 +209,7 @@ namespace TransformAnarchy
 
         // ── Event wiring ─────────────────────────────────────────────────────
 
-        private void WireFields(InputField[] fields, bool isPosition)
+        private void WireFields(InputField[] fields, Mode mode)
         {
             for (int i = 0; i < 3; i++)
             {
@@ -202,36 +217,51 @@ namespace TransformAnarchy
                 fields[i].onEndEdit.AddListener(value =>
                 {
                     if (!_suppressCallbacks)
-                        CommitInput(axis, value, isPosition);
+                        CommitInput(axis, value, mode);
                 });
             }
         }
 
-        private void CommitInput(int axis, string value, bool isPosition)
+        private void CommitInput(int axis, string value, Mode mode)
         {
             if (!float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float result))
             {
                 // Restore the last-known valid value on bad input
-                if (isPosition)
-                    SetText(_positionFields[axis], _lastPosition[axis], "F2");
-                else
-                    SetText(_rotationFields[axis], _lastEuler[axis],    "F1");
+                switch (mode)
+                {
+                    case Mode.Position: SetText(_positionFields[axis], _lastPosition[axis], "F2"); break;
+                    case Mode.Rotation: SetText(_rotationFields[axis], _lastEuler[axis], "F1"); break;
+                    case Mode.Scale: SetText(_scaleFields[axis], _lastScale[axis], "F2"); break;
+                }
                 return;
             }
 
-            if (isPosition)
+            switch (mode)
             {
-                Vector3 newPos = _lastPosition;
-                newPos[axis]   = result;
-                _lastPosition  = newPos;
-                OnPositionCommit?.Invoke(newPos);
-            }
-            else
-            {
-                Vector3 newEuler = _lastEuler;
-                newEuler[axis]   = result;
-                _lastEuler       = newEuler;
-                OnRotationCommit?.Invoke(newEuler);
+                case Mode.Position:
+                {
+                    Vector3 newPos = _lastPosition;
+                    newPos[axis] = result;
+                    _lastPosition = newPos;
+                    OnPositionCommit?.Invoke(newPos);
+                    break;
+                }
+                case Mode.Rotation:
+                {
+                    Vector3 newEuler = _lastEuler;
+                    newEuler[axis] = result;
+                    _lastEuler = newEuler;
+                    OnRotationCommit?.Invoke(newEuler);
+                    break;
+                }
+                case Mode.Scale:
+                {
+                    Vector3 newScale = _lastScale;
+                    newScale[axis] = Mathf.Clamp(result, ScaleGizmo.MIN_SCALE, ScaleGizmo.MAX_SCALE);
+                    _lastScale = newScale;
+                    OnScaleCommit?.Invoke(newScale);
+                    break;
+                }
             }
         }
 
@@ -263,22 +293,44 @@ namespace TransformAnarchy
             _suppressCallbacks = false;
         }
 
+        public void UpdateScale(Vector3 scale)
+        {
+            _lastScale = scale;
+            if (AnyFocused(_scaleFields)) return;
+
+            _suppressCallbacks = true;
+            SetText(_scaleFields[0], scale.x, "F2");
+            SetText(_scaleFields[1], scale.y, "F2");
+            SetText(_scaleFields[2], scale.z, "F2");
+            _suppressCallbacks = false;
+        }
+
         public void ShowPositionMode()
         {
             _positionPanel.SetActive(true);
             _rotationPanel.SetActive(false);
+            _scalePanel.SetActive(false);
         }
 
         public void ShowRotationMode()
         {
             _positionPanel.SetActive(false);
             _rotationPanel.SetActive(true);
+            _scalePanel.SetActive(false);
+        }
+
+        public void ShowScaleMode()
+        {
+            _positionPanel.SetActive(false);
+            _rotationPanel.SetActive(false);
+            _scalePanel.SetActive(true);
         }
 
         public void HideAll()
         {
             _positionPanel.SetActive(false);
             _rotationPanel.SetActive(false);
+            _scalePanel.SetActive(false);
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
