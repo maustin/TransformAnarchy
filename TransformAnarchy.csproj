@@ -340,6 +340,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderClearGhostPrefix.cs" />
+    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderImplementationBuildPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderOnDisablePrefix.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderCancelBuildingPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderChangeRotationPatch.cs" />

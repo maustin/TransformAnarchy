@@ -36,6 +36,8 @@ namespace TransformAnarchy
 
         public static FieldInfo onlyBuildOneField = AccessTools.Field(typeof(Builder), "onlyBuildOne");
 
+        public static Quaternion? PendingBlueprintRotation;
+
         public static bool MainTAPrefix(
                 ref GameObject ___ghost, ref Vector3 ___ghostPos, ref Quaternion ___rotation,
                 ref Vector3 ___forward, ref List<BuildableObject> ___actualBuiltObjects,
@@ -157,12 +159,18 @@ namespace TransformAnarchy
                     {
                         bool isBlueprintBuilder = b is BlueprintBuilder;
                         if (isBlueprintBuilder)
+                        {
                             onlyBuildOneField.SetValue(b, false);
+                            PendingBlueprintRotation = curRot;
+                        }
 
                         PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
 
                         if (isBlueprintBuilder)
+                        {
                             onlyBuildOneField.SetValue(b, true);
+                            PendingBlueprintRotation = null;
+                        }
                     }
                     else
                     {

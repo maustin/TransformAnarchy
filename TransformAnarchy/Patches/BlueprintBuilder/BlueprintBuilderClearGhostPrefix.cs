@@ -5,7 +5,6 @@ using UnityEngine;
 
 [HarmonyPatch]
 public class BlueprintBuilderClearGhostPrefix {
-    //static MethodBase TargetMethod() => AccessTools.Method(typeof(Builder), "clearGhost");
     static MethodBase TargetMethod() => AccessTools.Method(typeof(BlueprintBuilder), "clearGhost");
 
     [HarmonyPrefix]
