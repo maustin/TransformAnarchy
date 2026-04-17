@@ -395,7 +395,7 @@ namespace TransformAnarchy
 
             if (_coordDisplayGO != null)
             {
-                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(200f, -153f, 0f);
+                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(130f, -150f, 0f);
             }
 
         }

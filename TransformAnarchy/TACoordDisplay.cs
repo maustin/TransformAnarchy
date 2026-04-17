@@ -61,7 +61,7 @@ namespace TransformAnarchy
             bg.color = new Color(0.3f, 0.5f, 0.5f, 0.8f);
 
             var outline = panel.AddComponent<Outline>();
-            outline.effectColor    = new Color(1f, 1f, 1f, 0.5f);
+            outline.effectColor    = new Color(0.65f, 1f, 1f, 0.85f);
             outline.effectDistance = new Vector2(1f, -1f);
 
             var vlg = panel.AddComponent<VerticalLayoutGroup>();
