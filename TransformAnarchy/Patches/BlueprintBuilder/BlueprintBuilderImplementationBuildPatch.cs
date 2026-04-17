@@ -11,26 +11,28 @@ namespace TransformAnarchy
     {
         static MethodBase TargetMethod()
         {
-            foreach (var t in typeof(BlueprintBuilderImplementation)
-                .GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Public))
+            foreach (var t in typeof(BlueprintBuilderImplementation).GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Public))
             {
                 if (t.Name.StartsWith("<build>"))
                 {
                     var m = AccessTools.Method(t, "MoveNext");
-                    if (m != null) return m;
+                    if (m != null) {
+                        return m;
+                    } else {
+                        Debug.LogError("TA: BlueprintBuilderImplementationBuildPatch Could not find BlueprintBuilderImplementation.<build> MoveNext");
+                        return null;
+                    }
                 }
             }
-            Debug.LogError("TA: could not locate BlueprintBuilderImplementation.build state machine");
+            Debug.LogError("TA: BlueprintBuilderImplementationBuildPatch Could not locate BlueprintBuilderImplementation.<build>");
             return null;
         }
 
         [HarmonyTranspiler]
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
-            var lookRotation = AccessTools.Method(typeof(Quaternion), "LookRotation",
-                new[] { typeof(Vector3) });
-            var helper = AccessTools.Method(
-                typeof(BlueprintBuilderImplementationBuildPatch), "GetBlueprintRotation");
+            var lookRotation = AccessTools.Method(typeof(Quaternion), "LookRotation", new[] { typeof(Vector3) });
+            var helper = AccessTools.Method(typeof(BlueprintBuilderImplementationBuildPatch), "GetBlueprintRotation");
 
             foreach (var instr in instructions)
             {
