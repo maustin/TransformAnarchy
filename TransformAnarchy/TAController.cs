@@ -132,7 +132,9 @@ namespace TransformAnarchy
 
             Debug.Log("TA: TAController OnBuilderDisable");
 
-            UseTransformFromLastBuilder = GizmoEnabled && CurrentBuilder.GetType() == typeof(DecoBuilder);
+            UseTransformFromLastBuilder = GizmoEnabled &&
+                (CurrentBuilder.GetType() == typeof(DecoBuilder) ||
+                 CurrentBuilder.GetType() == typeof(BlueprintBuilder));
             StartCoroutine(StoppedBuildingWatch());
 
             CurrentBuilder = null;

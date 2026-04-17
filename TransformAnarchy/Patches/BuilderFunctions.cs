@@ -34,6 +34,8 @@ namespace TransformAnarchy
 
         public static MethodBase changeSize = AccessTools.Method(typeof(Builder), "changeSize", parameters: new Type[] { typeof(float) });
 
+        public static FieldInfo onlyBuildOneField = AccessTools.Field(typeof(Builder), "onlyBuildOne");
+
         public static bool MainTAPrefix(
                 ref GameObject ___ghost, ref Vector3 ___ghostPos, ref Quaternion ___rotation,
                 ref Vector3 ___forward, ref List<BuildableObject> ___actualBuiltObjects,
@@ -49,10 +51,10 @@ namespace TransformAnarchy
                 return true;
             }
 
-            //if (___ghost == null) {
-            //    Debug.Log("TA: MainTAPrefix no ghost!");
-            //    return false;
-            //}
+            if (___ghost == null)
+            {
+                return true;
+            }
 
             bool refreshRepresentation = false;
 
@@ -153,7 +155,14 @@ namespace TransformAnarchy
                     // Actually can build
                     if (___canBuild.result)
                     {
+                        bool isBlueprintBuilder = b is BlueprintBuilder;
+                        if (isBlueprintBuilder)
+                            onlyBuildOneField.SetValue(b, false);
+
                         PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
+
+                        if (isBlueprintBuilder)
+                            onlyBuildOneField.SetValue(b, true);
                     }
                     else
                     {
