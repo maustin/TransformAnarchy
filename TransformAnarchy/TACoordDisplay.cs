@@ -58,11 +58,7 @@ namespace TransformAnarchy
             rt.sizeDelta   = new Vector2(80f, 76f);
 
             var bg = panel.AddComponent<Image>();
-            bg.color = new Color(0.3f, 0.5f, 0.5f, 0.1f);
-
-            var outline = panel.AddComponent<Outline>();
-            outline.effectColor    = new Color(0.65f, 1f, 1f, 1f);
-            outline.effectDistance = new Vector2(1f, -1f);
+            bg.color = new Color(0.65f, 1f, 1f, 0.2f);
 
             var vlg = panel.AddComponent<VerticalLayoutGroup>();
             vlg.padding            = new RectOffset(4, 4, 4, 4);
