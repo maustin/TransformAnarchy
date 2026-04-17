@@ -47,6 +47,11 @@ namespace TransformAnarchy
         // Coordinate text-entry display (separate GO so it can be positioned independently)
         private GameObject _coordDisplayGO;
         private TACoordDisplay _coordDisplay;
+        private bool _coordDisplayVisible = false;
+        private GameObject _coordDisplayToggleGO;
+        private UIButton UICoordDisplayToggle;
+        private Sprite _coordToggleOpenSprite;
+        private Sprite _coordToggleCloseSprite;
 
         public struct UIButton
         {
@@ -144,6 +149,7 @@ namespace TransformAnarchy
             rotationalGizmo.SetActiveGizmo(false);
             CurrentTool = Tool.MOVE;
             CurrentSpace = ToolSpace.LOCAL;
+            _coordDisplayVisible = false;
 
             ClearBuilderGrid();
             UpdateUIContent();
@@ -284,6 +290,12 @@ namespace TransformAnarchy
 
         }
 
+        public void ToggleCoordDisplay()
+        {
+            _coordDisplayVisible = !_coordDisplayVisible;
+            UpdateUIContent();
+        }
+
         public void ToggleGizmoTool()
         {
             switch (CurrentTool)
@@ -341,10 +353,17 @@ namespace TransformAnarchy
             bool showUI = CurrentBuilder != null && GizmoEnabled;
             UITransform.SetActive(showUI);
 
+            if (_coordDisplayToggleGO != null)
+            {
+                _coordDisplayToggleGO.SetActive(showUI);
+                if (showUI)
+                    UICoordDisplayToggle.icon.sprite = _coordDisplayVisible ? _coordToggleCloseSprite : _coordToggleOpenSprite;
+            }
+
             if (_coordDisplayGO != null)
             {
-                _coordDisplayGO.SetActive(showUI);
-                if (showUI && _coordDisplay != null)
+                _coordDisplayGO.SetActive(showUI && _coordDisplayVisible);
+                if (showUI && _coordDisplayVisible && _coordDisplay != null)
                 {
                     if (CurrentTool == Tool.MOVE)
                         _coordDisplay.ShowPositionMode();
@@ -369,9 +388,14 @@ namespace TransformAnarchy
 
             UITransform.transform.position = uiScreenPos;
 
+            if (_coordDisplayToggleGO != null)
+            {
+                _coordDisplayToggleGO.transform.position = uiScreenPos + new Vector3(75f, -53f, 0f);
+            }
+
             if (_coordDisplayGO != null)
             {
-                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(190f, -110f, 0f);
+                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(215f, -135f, 0f);
             }
 
         }
@@ -530,6 +554,42 @@ namespace TransformAnarchy
             _coordDisplay.OnRotationCommit += OnCoordRotationCommit;
             _coordDisplayGO.SetActive(false);
 
+            // Coord display toggle button
+            var openTex = TA.GetLooseTexture(TA.LOOSE_TEXTURES.NUMERIC_ENTRY_OPEN_BUTTON);
+            _coordToggleOpenSprite = Sprite.Create(openTex, new Rect(0, 0, openTex.width, openTex.height), new Vector2(0.5f, 0.5f));
+            var closeTex = TA.GetLooseTexture(TA.LOOSE_TEXTURES.NUMERIC_ENTRY_CLOSE_BUTTON);
+            _coordToggleCloseSprite = Sprite.Create(closeTex, new Rect(0, 0, closeTex.width, closeTex.height), new Vector2(0.5f, 0.5f));
+
+            _coordDisplayToggleGO = new GameObject("TA_CoordDisplayToggle");
+            _coordDisplayToggleGO.transform.SetParent(Parkitect.UI.UIWorldOverlayController.Instance.transform, false);
+
+            RectTransform toggleRT = _coordDisplayToggleGO.AddComponent<RectTransform>();
+            toggleRT.sizeDelta = new Vector2(30f, 30f);
+
+            Image toggleBg = _coordDisplayToggleGO.AddComponent<Image>();
+            toggleBg.sprite = TA.InfoPipCircleSprite;
+
+            Button toggleBtn = _coordDisplayToggleGO.AddComponent<Button>();
+            toggleBtn.targetGraphic = toggleBg;
+
+            GameObject toggleIconGO = new GameObject("Image");
+            toggleIconGO.transform.SetParent(_coordDisplayToggleGO.transform, false);
+            RectTransform toggleIconRT = toggleIconGO.AddComponent<RectTransform>();
+            toggleIconRT.anchorMin = Vector2.zero;
+            toggleIconRT.anchorMax = Vector2.one;
+            toggleIconRT.sizeDelta = Vector2.zero;
+            toggleIconRT.anchoredPosition = Vector2.zero;
+            Image toggleIcon = toggleIconGO.AddComponent<Image>();
+            toggleIcon.sprite = _coordToggleOpenSprite;
+
+            UITooltip toggleTip = _coordDisplayToggleGO.AddComponent<UITooltip>();
+            toggleTip.context = "Transform Anarchy";
+            toggleTip.text = "Toggle numeric entry";
+
+            UICoordDisplayToggle = new UIButton(toggleBtn, toggleIcon, toggleTip);
+            toggleBtn.onClick.AddListener(ToggleCoordDisplay);
+            _coordDisplayToggleGO.SetActive(false);
+
             Debug.Log("TA: transform Anarchy initialized");
 
             UpdateUIContent();
@@ -671,6 +731,15 @@ namespace TransformAnarchy
                 Destroy(_coordDisplayGO);
                 _coordDisplayGO = null;
             }
+            if (UICoordDisplayToggle.button != null)
+                UICoordDisplayToggle.button.onClick.RemoveListener(ToggleCoordDisplay);
+            if (_coordDisplayToggleGO != null)
+            {
+                Destroy(_coordDisplayToggleGO);
+                _coordDisplayToggleGO = null;
+            }
+            _coordToggleOpenSprite = null;
+            _coordToggleCloseSprite = null;
 
             Destroy(UITransform);
 

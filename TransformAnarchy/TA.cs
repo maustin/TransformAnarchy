@@ -41,17 +41,20 @@ namespace TransformAnarchy
         public static Sprite GlobalSprite;
         public static Sprite OriginMoveSprite;
         public static Sprite TickSprite;
+        public static Sprite InfoPipCircleSprite;
 
         public enum LOOSE_TEXTURES {
             SCALE_BUTTON,
-            REPOSITION_BUTTON,
+            NUMERIC_ENTRY_OPEN_BUTTON,
+            NUMERIC_ENTRY_CLOSE_BUTTON,
         };
 
         private static Dictionary<LOOSE_TEXTURES, string> LooseTextureFilenames = new Dictionary<LOOSE_TEXTURES, string>() {
             { LOOSE_TEXTURES.SCALE_BUTTON, "Res/resize.png" },
-            { LOOSE_TEXTURES.REPOSITION_BUTTON, "Res/undo.png" },
+            { LOOSE_TEXTURES.NUMERIC_ENTRY_OPEN_BUTTON, "Res/NumericEntryToggle-closed.png" },
+            { LOOSE_TEXTURES.NUMERIC_ENTRY_CLOSE_BUTTON, "Res/NumericEntryToggle-open.png" },
         };
-        private static Dictionary<LOOSE_TEXTURES, Texture2D> LooseTextures;// = new Dictionary<LOOSE_TEXTURES, Texture2D>();
+        private static Dictionary<LOOSE_TEXTURES, Texture2D> LooseTextures;
 
         public static Texture2D GetLooseTexture(LOOSE_TEXTURES textureName) {
             if (LooseTextures.ContainsKey(textureName)) return LooseTextures[textureName];
@@ -98,6 +101,7 @@ namespace TransformAnarchy
             GlobalSprite = loadedAB.LoadAsset<Sprite>("assets/ui_icon_global.png");
             OriginMoveSprite = loadedAB.LoadAsset<Sprite>("assets/ui_icon_pivot.png");
             TickSprite = loadedAB.LoadAsset<Sprite>("assets/ui_icon_build.png");
+            InfoPipCircleSprite = loadedAB.LoadAsset<Sprite>("assets/ui_infopip_circle.png");
 
             loadedAB.Unload(false);
             Debug.Log("TA: Loaded assetbundle!");
