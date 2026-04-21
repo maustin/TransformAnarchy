@@ -30,7 +30,7 @@ namespace TransformAnarchy
             ref Dictionary<BuildableObject, BuildableObject.CanBuild> ___builtObjectsCanBuildCache,
             ref BuildableObject.CanBuild ___canBuild, ref GameObject ___snapIndicator)
         {
-            Debug.Log("TA: DecoBuilder.Update prefix");
+            //Debug.Log("TA: DecoBuilder.Update prefix");
 
             bool runMethodAfter = BuilderFunctions.MainTAPrefix(
                 ref ___ghost, ref ___ghostPos, ref ___rotation,

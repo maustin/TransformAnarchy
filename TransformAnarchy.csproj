@@ -340,11 +340,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderClearGhostPrefix.cs" />
+    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderImplementationBuildPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderOnDisablePrefix.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderCancelBuildingPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderChangeRotationPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderOnAfterBuildCommandsTriggeredPrefix.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuildOnDisablePrefix.cs" />
+    <Compile Include="TransformAnarchy\TAObjectPipetteTool.cs" />
     <Compile Include="TransformAnarchy\TASettingsData.cs" />
     <Compile Include="TransformAnarchy\Gizmo\Gizmo.cs" />
     <Compile Include="TransformAnarchy\Gizmo\GizmoComponent.cs" />
@@ -363,6 +365,7 @@
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderUpdatePatch.cs" />
     <Compile Include="TransformAnarchy\Patches\DecoBuilder\DecoBuilderMakeValidBuildPositionPatch.cs" />
     <Compile Include="TransformAnarchy\TA.cs" />
+    <Compile Include="TransformAnarchy\TACoordDisplay.cs" />
     <Compile Include="TransformAnarchy\TAController.cs" />
     <Compile Include="TransformAnarchy\Util\GameObjectExtensions.cs" />
     <Compile Include="TransformAnarchy\Util\HighlightOverlayControllerUtil.cs" />
