@@ -28,15 +28,15 @@ namespace TransformAnarchy
         public void Initialize()
         {
             _positionPanel = CreatePanel("PosPanel");
-            _positionFields[0] = AddRow(_positionPanel.transform, "X", new Color(1f, 1f, 1f));
-            _positionFields[1] = AddRow(_positionPanel.transform, "Y", new Color(1f, 1f, 1f));
-            _positionFields[2] = AddRow(_positionPanel.transform, "Z", new Color(1f, 1f, 1f));
+            _positionFields[0] = AddRow(_positionPanel.transform, "X", new Color(1f, 0.5f, 0.5f));
+            _positionFields[1] = AddRow(_positionPanel.transform, "Y", new Color(0.5f, 1f, 0.5f));
+            _positionFields[2] = AddRow(_positionPanel.transform, "Z", new Color(0.5f, 0.5f, 1f));
             WireFields(_positionFields, isPosition: true);
 
             _rotationPanel = CreatePanel("RotPanel");
-            _rotationFields[0] = AddRow(_rotationPanel.transform, "X", new Color(1f, 1f, 1f));
-            _rotationFields[1] = AddRow(_rotationPanel.transform, "Y", new Color(1f, 1f, 1f));
-            _rotationFields[2] = AddRow(_rotationPanel.transform, "Z", new Color(1f, 1f,  1f));
+            _rotationFields[0] = AddRow(_rotationPanel.transform, "X", new Color(1f, 0.5f, 0.5f));
+            _rotationFields[1] = AddRow(_rotationPanel.transform, "Y", new Color(0.5f, 1f, 0.5f));
+            _rotationFields[2] = AddRow(_rotationPanel.transform, "Z", new Color(0.5f, 0.5f, 1f));
             WireFields(_rotationFields, isPosition: false);
 
             _positionPanel.SetActive(false);
