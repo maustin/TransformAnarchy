@@ -395,18 +395,19 @@ namespace TransformAnarchy
 
             UITransform.transform.position = uiScreenPos;
 
+            // Since the coordinate UI pieces are manually positioned we need to adjust based the user's UI Scale setting
+            float uiScale = Settings.Instance.uiScale;
+
             if (_coordDisplayToggleGO != null)
             {
                 // TODO: Eliminate magic numbers!
-                // TODO: This needs to be tested with different UI scale values
-                _coordDisplayToggleGO.transform.position = uiScreenPos + new Vector3(78f, -53f, 0f);
+                _coordDisplayToggleGO.transform.position = uiScreenPos + new Vector3(65f * uiScale, -44f * uiScale, 0f);
             }
 
             if (_coordDisplayGO != null)
             {
                 // TODO: Eliminate magic numbers!
-                // TODO: This needs to be tested with different UI scale values
-                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(130f, -150f, 0f);
+                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(108f * uiScale, -125f * uiScale, 0f);
             }
 
         }
@@ -576,7 +577,6 @@ namespace TransformAnarchy
             _coordDisplayToggleGO.transform.SetParent(Parkitect.UI.UIWorldOverlayController.Instance.transform, false);
 
             RectTransform toggleRT = _coordDisplayToggleGO.AddComponent<RectTransform>();
-            // TODO: Test with different UI scale values
             toggleRT.sizeDelta = new Vector2(30f, 30f);
 
             Image toggleBg = _coordDisplayToggleGO.AddComponent<Image>();
