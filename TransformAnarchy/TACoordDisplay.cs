@@ -5,9 +5,6 @@ using UnityEngine.UI;
 
 namespace TransformAnarchy
 {
-    // Manages the coordinates text-entry panel that appears in MOVE and ROTATE modes.
-    // Create this component on a new GameObject, then call Initialize().
-    // Position the host GameObject in screen-space to place the panels.
     public class TACoordDisplay : MonoBehaviour
     {
         public event Action<Vector3> OnPositionCommit;
@@ -18,22 +15,22 @@ namespace TransformAnarchy
         private GameObject _positionPanel;
         private GameObject _rotationPanel;
 
-        // Last-known values; used to restore a field if the user types invalid input.
+        // Last-known values used to restore a field if the user types invalid input
         private Vector3 _lastPosition;
         private Vector3 _lastEuler;
 
-        // When true, programmatic text changes won't trigger commit callbacks.
+        // When true, programmatic text changes won't trigger commit callbacks
         private bool _suppressCallbacks;
 
         public void Initialize()
         {
-            _positionPanel = CreatePanel("PosPanel");
+            _positionPanel = CreatePanel("PositionPanel");
             _positionFields[0] = AddRow(_positionPanel.transform, "X", new Color(1f, 0.5f, 0.5f));
             _positionFields[1] = AddRow(_positionPanel.transform, "Y", new Color(0.5f, 1f, 0.5f));
             _positionFields[2] = AddRow(_positionPanel.transform, "Z", new Color(0.5f, 0.5f, 1f));
             WireFields(_positionFields, isPosition: true);
 
-            _rotationPanel = CreatePanel("RotPanel");
+            _rotationPanel = CreatePanel("RotationPanel");
             _rotationFields[0] = AddRow(_rotationPanel.transform, "X", new Color(1f, 0.5f, 0.5f));
             _rotationFields[1] = AddRow(_rotationPanel.transform, "Y", new Color(0.5f, 1f, 0.5f));
             _rotationFields[2] = AddRow(_rotationPanel.transform, "Z", new Color(0.5f, 0.5f, 1f));
@@ -43,33 +40,31 @@ namespace TransformAnarchy
             _rotationPanel.SetActive(false);
         }
 
-        // ── Panel / row builders ──────────────────────────────────────────────
-
         private GameObject CreatePanel(string name)
         {
             var panel = new GameObject(name);
             panel.transform.SetParent(transform, false);
 
             var rt = panel.AddComponent<RectTransform>();
-            rt.pivot       = new Vector2(0.5f, 0.5f);
-            rt.anchorMin   = new Vector2(0.5f, 0.5f);
-            rt.anchorMax   = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = Vector2.zero;
-            rt.sizeDelta   = new Vector2(80f, 76f);
+            rt.sizeDelta = new Vector2(80f, 76f);
 
             var bg = panel.AddComponent<Image>();
             bg.color = new Color(0.65f, 1f, 1f, 0.2f);
 
             var vlg = panel.AddComponent<VerticalLayoutGroup>();
-            vlg.padding            = new RectOffset(4, 4, 4, 4);
-            vlg.spacing            = 2f;
-            vlg.childControlWidth  = true;
+            vlg.padding = new RectOffset(4, 4, 4, 4);
+            vlg.spacing = 2f;
+            vlg.childControlWidth = true;
             vlg.childControlHeight = false;
             vlg.childForceExpandWidth  = true;
             vlg.childForceExpandHeight = false;
 
             var csf = panel.AddComponent<ContentSizeFitter>();
-            csf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
+            csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             csf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
 
             return panel;
@@ -77,20 +72,18 @@ namespace TransformAnarchy
 
         private InputField AddRow(Transform parent, string axisLabel, Color labelColor)
         {
-            // Row
             var row = new GameObject("Row_" + axisLabel);
             row.transform.SetParent(parent, false);
             var rowRect = row.AddComponent<RectTransform>();
             rowRect.sizeDelta = new Vector2(0f, 22f);
 
             var hlg = row.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing            = 4f;
+            hlg.spacing = 4f;
             hlg.childControlHeight = true;
             hlg.childForceExpandHeight = true;
             hlg.childControlWidth  = false;
             hlg.childForceExpandWidth  = false;
 
-            // Label
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(row.transform, false);
             var labelRect = labelGO.AddComponent<RectTransform>();
@@ -99,17 +92,17 @@ namespace TransformAnarchy
             labelLE.minWidth = 18f;
             labelLE.preferredWidth = 18f;
             var labelText = labelGO.AddComponent<Text>();
-            labelText.text      = axisLabel;
-            labelText.font      = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            labelText.fontSize  = 11;
+            labelText.text = axisLabel;
+            // TODO: Can we use a Parkitect-loaded font here instead? Is it worth it?
+            labelText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            labelText.fontSize = 11;
             labelText.fontStyle = FontStyle.Bold;
-            labelText.color     = labelColor;
+            labelText.color = labelColor;
             labelText.alignment = TextAnchor.MiddleCenter;
 
-            // Input field
             var field = CreateInputField(row.transform, axisLabel);
             var fieldLE = field.gameObject.AddComponent<LayoutElement>();
-            fieldLE.minHeight       = 22f;
+            fieldLE.minHeight = 22f;
             fieldLE.preferredHeight = 22f;
 
             return field;
@@ -126,25 +119,23 @@ namespace TransformAnarchy
             bg.color = new Color(0.35f, 0.35f, 0.35f, 1f);
 
             var field = go.AddComponent<InputField>();
-            field.contentType    = InputField.ContentType.DecimalNumber;
+            field.contentType = InputField.ContentType.DecimalNumber;
             field.characterLimit = 12;
 
-            // Visible text
             var textGO = new GameObject("Text");
             textGO.transform.SetParent(go.transform, false);
             var textRT = textGO.AddComponent<RectTransform>();
-            textRT.anchorMin  = Vector2.zero;
-            textRT.anchorMax  = Vector2.one;
-            textRT.offsetMin  = new Vector2(4f,  2f);
-            textRT.offsetMax  = new Vector2(-4f, -2f);
+            textRT.anchorMin = Vector2.zero;
+            textRT.anchorMax = Vector2.one;
+            textRT.offsetMin = new Vector2(4f, 2f);
+            textRT.offsetMax = new Vector2(-4f, -2f);
             var textComp = textGO.AddComponent<Text>();
-            textComp.font      = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            textComp.fontSize  = 11;
-            textComp.color     = Color.white;
+            textComp.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            textComp.fontSize = 11;
+            textComp.color = Color.white;
             textComp.alignment = TextAnchor.MiddleRight;
             field.textComponent = textComp;
 
-            // Placeholder
             var phGO = new GameObject("Placeholder");
             phGO.transform.SetParent(go.transform, false);
             var phRT = phGO.AddComponent<RectTransform>();
@@ -164,8 +155,6 @@ namespace TransformAnarchy
 
             return field;
         }
-
-        // ── Input handling ────────────────────────────────────────────────────
 
         private void Update()
         {
@@ -192,8 +181,6 @@ namespace TransformAnarchy
             }
         }
 
-        // ── Event wiring ─────────────────────────────────────────────────────
-
         private void WireFields(InputField[] fields, bool isPosition)
         {
             for (int i = 0; i < 3; i++)
@@ -215,33 +202,30 @@ namespace TransformAnarchy
                 if (isPosition)
                     SetText(_positionFields[axis], _lastPosition[axis], "F2");
                 else
-                    SetText(_rotationFields[axis], _lastEuler[axis],    "F1");
+                    SetText(_rotationFields[axis], _lastEuler[axis], "F1");
                 return;
             }
 
             if (isPosition)
             {
                 Vector3 newPos = _lastPosition;
-                newPos[axis]   = result;
-                _lastPosition  = newPos;
+                newPos[axis] = result;
+                _lastPosition = newPos;
                 OnPositionCommit?.Invoke(newPos);
             }
             else
             {
                 Vector3 newEuler = _lastEuler;
-                newEuler[axis]   = result;
-                _lastEuler       = newEuler;
+                newEuler[axis] = result;
+                _lastEuler = newEuler;
                 OnRotationCommit?.Invoke(newEuler);
             }
         }
 
-        // ── Public update API ─────────────────────────────────────────────────
-
-        // Call every frame (or after drag) from TAController.
-        // Skips update while the user is actively editing a field.
         public void UpdatePosition(Vector3 worldPos)
         {
             _lastPosition = worldPos;
+            // Skip update while the user is actively editing a field
             if (AnyFocused(_positionFields)) return;
 
             _suppressCallbacks = true;
@@ -254,6 +238,7 @@ namespace TransformAnarchy
         public void UpdateRotation(Vector3 euler)
         {
             _lastEuler = euler;
+            // Skip update while the user is actively editing a field
             if (AnyFocused(_rotationFields)) return;
 
             _suppressCallbacks = true;
@@ -281,8 +266,6 @@ namespace TransformAnarchy
             _rotationPanel.SetActive(false);
         }
 
-        // ── Helpers ───────────────────────────────────────────────────────────
-
         private static bool AnyFocused(InputField[] fields)
         {
             foreach (var f in fields)
@@ -296,11 +279,12 @@ namespace TransformAnarchy
             field.text = value.ToString(format, CultureInfo.InvariantCulture);
         }
 
-        // Map Euler angle to [-180, 180] for nicer display (e.g. -10 instead of 350).
+        // TODO: Keep?
+        // This wraps Euler angle to [-180, 180] for nicer display (e.g. -10 instead of 350)
         private static float NormalizeAngle(float angle)
         {
             angle %= 360f;
-            if (angle > 180f)  angle -= 360f;
+            if (angle > 180f) angle -= 360f;
             if (angle < -180f) angle += 360f;
             return angle;
         }

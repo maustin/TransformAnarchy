@@ -339,13 +339,10 @@
     <Content Include="Res\ui_icon_rotationGizmoDisabled.png" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderClearGhostPrefix.cs" />
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderImplementationBuildPatch.cs" />
-    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderOnDisablePrefix.cs" />
-    <Compile Include="TransformAnarchy\Patches\Builder\BuilderCancelBuildingPatch.cs" />
+    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderCancelBuildingPrefix.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderChangeRotationPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderOnAfterBuildCommandsTriggeredPrefix.cs" />
-    <Compile Include="TransformAnarchy\Patches\Builder\BuildOnDisablePrefix.cs" />
     <Compile Include="TransformAnarchy\TAObjectPipetteTool.cs" />
     <Compile Include="TransformAnarchy\TASettingsData.cs" />
     <Compile Include="TransformAnarchy\Gizmo\Gizmo.cs" />
@@ -355,7 +352,7 @@
     <Compile Include="TransformAnarchy\Gizmo\RotationalGizmo.cs" />
     <Compile Include="TransformAnarchy\Gizmo\RotationalGizmoComponent.cs" />
     <Compile Include="TransformAnarchy\KeybindManager.cs" />
-    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderMakeValidBuildPositionPatch - Copy.cs" />
+    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderMakeValidBuildPositionPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\BuilderFunctions.cs" />
     <Compile Include="TransformAnarchy\Patches\DecoBuilder\DecoBuilderUpdatePatch.cs" />
     <Compile Include="TransformAnarchy\Patches\ObjectPipetteButton\ObjectPipetteButtonOnObjectSelectedPatch.cs" />

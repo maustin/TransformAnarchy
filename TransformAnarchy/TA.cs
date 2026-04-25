@@ -9,7 +9,7 @@ namespace TransformAnarchy
 {
     public class TA : AbstractMod, IModSettings
     {
-        public const string VERSION_NUMBER = "1.4.0";
+        public const string VERSION_NUMBER = "1.4";
         public override string getIdentifier() => "com.parkitectCommunity.TA";
         public override string getName() => "Transform Anarchy";
         public override string getDescription() => @"Adds an advanced building gizmo for select building types.";
@@ -207,7 +207,8 @@ namespace TransformAnarchy
             GUILayout.Space(50);
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Vertical rotation on blueprints and flatrides is not supported", guistyleTextMiddle);
+            //GUILayout.Label("Vertical rotation on blueprints and flatrides is not supported", guistyleTextMiddle);
+            GUILayout.Label("When scaling a Blueprint, only Deco objects will be scaled. Paths, rides, and shops will not scale.", guistyleTextMiddle);
             GUILayout.EndHorizontal();
 
             // Check the values when enter is pressed

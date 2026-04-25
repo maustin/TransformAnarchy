@@ -7,7 +7,7 @@ using UnityEngine;
 namespace TransformAnarchy
 {
     [HarmonyPatch]
-    class BlueprintBuilderImplementationBuildPatch
+    public class BlueprintBuilderImplementationBuildPatch
     {
         static MethodBase TargetMethod()
         {

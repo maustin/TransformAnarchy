@@ -45,7 +45,7 @@ namespace TransformAnarchy
 
         public GameObject UITransform;
 
-        // Coordinate text-entry display (separate GO so it can be positioned independently)
+        // Coordinate text-entry UI (this UI is separate from the main UI prefab and needs to be handled manually)
         private GameObject _coordDisplayGO;
         private TACoordDisplay _coordDisplay;
         private bool _coordDisplayVisible = false;
@@ -157,6 +157,8 @@ namespace TransformAnarchy
             _coordDisplayVisible = false;
             _blueprintScale = 1f;
 
+            // Clear the pivot offset on Gizmo close as it was carrying over to "move existing object" mode
+            ResetPivot();
             ClearBuilderGrid();
             UpdateUIContent();
 
@@ -342,7 +344,6 @@ namespace TransformAnarchy
 
         public void UpdateUIContent()
         {
-
             // Pivot editing update
             UIBuildButton.button.interactable = !IsEditingOrigin;
 
@@ -396,11 +397,15 @@ namespace TransformAnarchy
 
             if (_coordDisplayToggleGO != null)
             {
+                // TODO: Eliminate magic numbers!
+                // TODO: This needs to be tested with different UI scale values
                 _coordDisplayToggleGO.transform.position = uiScreenPos + new Vector3(78f, -53f, 0f);
             }
 
             if (_coordDisplayGO != null)
             {
+                // TODO: Eliminate magic numbers!
+                // TODO: This needs to be tested with different UI scale values
                 _coordDisplayGO.transform.position = uiScreenPos + new Vector3(130f, -150f, 0f);
             }
 
@@ -457,7 +462,8 @@ namespace TransformAnarchy
             }
         }
 
-        public void OnEnable() {
+        public void OnEnable()
+        {
 
             Debug.Log("TA: Enabling TAController");
 
@@ -560,7 +566,7 @@ namespace TransformAnarchy
             _coordDisplay.OnRotationCommit += OnCoordRotationCommit;
             _coordDisplayGO.SetActive(false);
 
-            // Coord display toggle button
+            // Coord display toggle buttons
             var openTex = TA.GetLooseTexture(TA.LOOSE_TEXTURES.NUMERIC_ENTRY_OPEN_BUTTON);
             _coordToggleOpenSprite = Sprite.Create(openTex, new Rect(0, 0, openTex.width, openTex.height), new Vector2(0.5f, 0.5f));
             var closeTex = TA.GetLooseTexture(TA.LOOSE_TEXTURES.NUMERIC_ENTRY_CLOSE_BUTTON);
@@ -570,6 +576,7 @@ namespace TransformAnarchy
             _coordDisplayToggleGO.transform.SetParent(Parkitect.UI.UIWorldOverlayController.Instance.transform, false);
 
             RectTransform toggleRT = _coordDisplayToggleGO.AddComponent<RectTransform>();
+            // TODO: Test with different UI scale values
             toggleRT.sizeDelta = new Vector2(30f, 30f);
 
             Image toggleBg = _coordDisplayToggleGO.AddComponent<Image>();
@@ -597,7 +604,7 @@ namespace TransformAnarchy
             toggleBtn.onClick.AddListener(ToggleCoordDisplay);
             _coordDisplayToggleGO.SetActive(false);
 
-            Debug.Log("TA: transform Anarchy initialized");
+            Debug.Log("TA: TAController OnEnable finished");
 
             UpdateUIContent();
 
@@ -633,12 +640,13 @@ namespace TransformAnarchy
         private void OnEditPickerObjectSelected(BuildableObject buildableObject)
         {
             GameController.Instance.removeMouseTool(_editPipetteTool);
-            // _editPipetteTool is nulled by the OnRemoved handler
+            // _editPipetteTool is cleared by the OnRemoved handler above
 
+            // I think this check is redundant but keeping for safety
             Deco deco = buildableObject as Deco;
             if (deco == null) return;
 
-            Debug.Log("TA: Edit picker selected: " + deco.getReferenceName());
+            Debug.Log("TA: Edit picker selected deco: " + deco.getReferenceName());
             _editTarget = deco;
             deco.gameObject.SetActive(false);
             
@@ -721,7 +729,7 @@ namespace TransformAnarchy
 
         public void OnDisable()
         {
-            Debug.Log("TA: Controller.OnDisable");
+            Debug.Log("TA: TAController.OnDisable");
 
             UIToolButton.button.onClick.RemoveListener(ToggleGizmoTool);
             UISpaceButton.button.onClick.RemoveListener(ToggleGizmoSpace);
