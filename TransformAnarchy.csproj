@@ -341,8 +341,10 @@
   <ItemGroup>
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderImplementationBuildPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderCancelBuildingPrefix.cs" />
+    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderOnDisablePrefix.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderChangeRotationPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\Builder\BuilderOnAfterBuildCommandsTriggeredPrefix.cs" />
+    <Compile Include="TransformAnarchy\Patches\Builder\BuilderOnDisablePrefix.cs" />
     <Compile Include="TransformAnarchy\TAObjectPipetteTool.cs" />
     <Compile Include="TransformAnarchy\TASettingsData.cs" />
     <Compile Include="TransformAnarchy\Gizmo\Gizmo.cs" />
