@@ -73,6 +73,18 @@ namespace TransformAnarchy
                 refreshRepresentation = true;
             }
 
+            // Blueprint scaling check now runs regardless of gizmo state so the size
+            // hotkeys keep working even when the TA UI is closed. The ghost
+            // and Pending/Applied scale fields are kept in sync every frame
+            // so a build triggered by the original Builder.Update path
+            // (gizmo off) still scales correctly via the transpiler hooks.
+            if (b is BlueprintBuilder && TA.TASettings.enableBlueprintScaling)
+            {
+                TA.MainController.UpdateBlueprintScaleFromInput();
+                ___ghost.transform.localScale = Vector3.one * TA.MainController.BlueprintScale;
+                PendingBlueprintScale = TA.MainController.BlueprintScale;
+                AppliedBlueprintScale = TA.MainController.BlueprintScale;
+            }
 
             if (TA.MainController.GizmoEnabled)
             {

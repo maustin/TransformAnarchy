@@ -80,6 +80,17 @@ namespace TransformAnarchy
         private float _blueprintScale = 1.0f;
         public float BlueprintScale => _blueprintScale;
 
+        public void UpdateBlueprintScaleFromInput()
+        {
+            if (!(CurrentBuilder is BlueprintBuilder) || UIUtility.isInputFieldFocused())
+                return;
+
+            if (InputManager.getKey("BuildingIncreaseObjectSize"))
+                _blueprintScale = Mathf.Min(10f, _blueprintScale + 0.01f);
+            else if (InputManager.getKey("BuildingDecreaseObjectSize"))
+                _blueprintScale = Mathf.Max(0.1f, _blueprintScale - 0.01f);
+        }
+
         // Flags
         public bool UseTransformFromLastBuilder = false;
         public bool PipetteWaitForMouseUp = false;
@@ -879,15 +890,10 @@ namespace TransformAnarchy
                 _dontUpdateGrid = false;
             }
 
-            // Reimplement size hotkeys directly
-            if (CurrentBuilder is BlueprintBuilder)
-            {
-                if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
-                    _blueprintScale = Mathf.Min(10f, _blueprintScale + 0.01f);
-                else if (InputManager.getKey("BuildingDecreaseObjectSize") && !UIUtility.isInputFieldFocused())
-                    _blueprintScale = Mathf.Max(0.1f, _blueprintScale - 0.01f);
-            }
-            else
+            // Reimplement size hotkeys directly. BlueprintBuilder scaling is
+            // handled in BuilderFunctions.MainTAPrefix so it works whether or
+            // not the gizmo/UI is active.
+            if (!(CurrentBuilder is BlueprintBuilder))
             {
                 if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
                     BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { 0.01f });

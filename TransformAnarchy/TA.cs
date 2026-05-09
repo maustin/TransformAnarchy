@@ -158,18 +158,26 @@ namespace TransformAnarchy
             GUILayout.BeginHorizontal();
             GUILayout.Label("Version", guistyleTextLeft, GUILayout.Width(175));
             GUILayout.Label(VERSION_NUMBER, guistyleTextMiddle);
-            if (GUILayout.Button("Advanced settings", guistyleButton, GUILayout.Width(125)))
-            {
-                TASettings.showAdvancedSettings = !TASettings.showAdvancedSettings;
-                onDrawSettingsUI();
-            }
             GUILayout.EndHorizontal();
 
-            GUILayout.Space(30);
+            GUILayout.Space(10);
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("Default rotation angle", guistyleTextLeft, GUILayout.Width(175));
             rotationAngleString = GUILayout.TextField(rotationAngleString, 7, guistyleField);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(10);
+
+            TASettings.enableBlueprintScaling = GUILayout.Toggle(TASettings.enableBlueprintScaling, " Enable Blueprint scaling");
+            GUILayout.Label("When scaling a Blueprint, only Deco objects will be scaled. Paths, rides, and shops will not scale.", guistyleTextMiddle);
+
+            GUILayout.Space(10);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Advanced settings", guistyleButton, GUILayout.Width(125))) {
+                TASettings.showAdvancedSettings = !TASettings.showAdvancedSettings;
+                onDrawSettingsUI();
+            }
             GUILayout.EndHorizontal();
 
             if (TASettings.showAdvancedSettings == true)
@@ -203,13 +211,6 @@ namespace TransformAnarchy
                 TASettings.gizmoRenderBehaviourString = GUILayout.SelectionGrid(TASettings.gizmoRenderBehaviourString, gizmoRenderBehaviourString, 2, guistyleButton);
                 GUILayout.EndHorizontal();
             }
-
-            GUILayout.Space(50);
-
-            GUILayout.BeginHorizontal();
-            //GUILayout.Label("Vertical rotation on blueprints and flatrides is not supported", guistyleTextMiddle);
-            GUILayout.Label("When scaling a Blueprint, only Deco objects will be scaled. Paths, rides, and shops will not scale.", guistyleTextMiddle);
-            GUILayout.EndHorizontal();
 
             // Check the values when enter is pressed
             if (Event.current.isKey && Event.current.keyCode == KeyCode.Return)
