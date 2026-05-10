@@ -82,7 +82,16 @@ namespace TransformAnarchy
             foreach (var obj in builtObjectInstances)
             {
                 var customSize = obj.GetComponentInChildren<CustomSize>();
-                if (customSize == null) continue;
+                if (customSize == null)
+                {
+                    customSize = obj.gameObject.AddComponent<CustomSize>();
+                }
+
+                if (customSize.minSize > TA.TASettings.customSizeMinimum)
+                    customSize.minSize = TA.TASettings.customSizeMinimum;
+                if (customSize.maxSize < TA.TASettings.customSizeMaximum)
+                    customSize.maxSize = TA.TASettings.customSizeMaximum;
+
                 float newSize = Mathf.Clamp(customSize.getValue() * scale, customSize.minSize, customSize.maxSize);
                 customSize.setValue(newSize);
             }

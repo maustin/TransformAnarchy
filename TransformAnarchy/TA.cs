@@ -262,6 +262,8 @@ namespace TransformAnarchy
 
         public void RegisterHotkeys()
         {
+            Debug.Log("TA: RegisterHotkeys");
+
             _keys = new KeybindManager("TA_KEYS", "Transform Anarchy");
 
             _keys.AddKeybind("togglePivotEdit", "Toggle Pivot Offset", "Toggles whether the pivot or the object will move.", UnityEngine.KeyCode.U);
@@ -278,6 +280,8 @@ namespace TransformAnarchy
 
         public void UnregisterHotkeys()
         {
+            Debug.Log("TA: UnregisterHotkeys");
+
             _keys.UnregisterAll();
         }
 
