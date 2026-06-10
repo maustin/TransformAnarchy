@@ -406,20 +406,7 @@ namespace TransformAnarchy
 
             UITransform.transform.position = uiScreenPos;
 
-            // Since the coordinate UI pieces are manually positioned we need to adjust based the user's UI Scale setting
-            float uiScale = Settings.Instance.uiScale;
-
-            if (_coordDisplayToggleGO != null)
-            {
-                // TODO: Eliminate magic numbers!
-                _coordDisplayToggleGO.transform.position = uiScreenPos + new Vector3(65f * uiScale, -44f * uiScale, 0f);
-            }
-
-            if (_coordDisplayGO != null)
-            {
-                // TODO: Eliminate magic numbers!
-                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(108f * uiScale, -125f * uiScale, 0f);
-            }
+            // The coordinate UI pieces are children of UITransform so they follow it (and the canvas scale) automatically
 
         }
 
@@ -569,9 +556,19 @@ namespace TransformAnarchy
             UIGizmoToggleButton.button.onClick.AddListener(() => SetGizmoEnabled(!GizmoEnabled));
             UIResetRotationButton.button.onClick.AddListener(ResetGizmoRotation);
 
-            // Coordinate display panel (sibling of UITransform so it can be positioned independently)
+            // Coordinate display panel (child of UITransform so it inherits position and canvas scaling automatically)
+            RectTransform uiHolderRT = UITransform.GetComponent<RectTransform>();
+
             _coordDisplayGO = new GameObject("TA_CoordDisplay");
-            _coordDisplayGO.transform.SetParent(Parkitect.UI.UIWorldOverlayController.Instance.transform, false);
+            _coordDisplayGO.transform.SetParent(UITransform.transform, false);
+            RectTransform coordRT = _coordDisplayGO.AddComponent<RectTransform>();
+            coordRT.anchorMin = uiHolderRT.pivot;
+            coordRT.anchorMax = uiHolderRT.pivot;
+            coordRT.pivot = new Vector2(0.5f, 0.5f);
+            coordRT.sizeDelta = Vector2.zero;
+            coordRT.anchoredPosition = new Vector2(81f, -93.75f); // offset in canvas units from the button cluster anchor
+            LayoutElement coordLE = _coordDisplayGO.AddComponent<LayoutElement>();
+            coordLE.ignoreLayout = true; // in case the UiHolder prefab root has a layout group
             _coordDisplay = _coordDisplayGO.AddComponent<TACoordDisplay>();
             _coordDisplay.Initialize();
             _coordDisplay.OnPositionCommit += OnCoordPositionCommit;
@@ -585,10 +582,15 @@ namespace TransformAnarchy
             _coordToggleCloseSprite = Sprite.Create(closeTex, new Rect(0, 0, closeTex.width, closeTex.height), new Vector2(0.5f, 0.5f));
 
             _coordDisplayToggleGO = new GameObject("TA_CoordDisplayToggle");
-            _coordDisplayToggleGO.transform.SetParent(Parkitect.UI.UIWorldOverlayController.Instance.transform, false);
+            _coordDisplayToggleGO.transform.SetParent(UITransform.transform, false);
 
             RectTransform toggleRT = _coordDisplayToggleGO.AddComponent<RectTransform>();
             toggleRT.sizeDelta = new Vector2(30f, 30f);
+            toggleRT.anchorMin = uiHolderRT.pivot;
+            toggleRT.anchorMax = uiHolderRT.pivot;
+            toggleRT.anchoredPosition = new Vector2(48.75f, -33f); // offset in canvas units from the button cluster anchor
+            LayoutElement toggleLE = _coordDisplayToggleGO.AddComponent<LayoutElement>();
+            toggleLE.ignoreLayout = true; // in case the UiHolder prefab root has a layout group
 
             Image toggleBg = _coordDisplayToggleGO.AddComponent<Image>();
             toggleBg.sprite = TA.InfoPipCircleSprite;
