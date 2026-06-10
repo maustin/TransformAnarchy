@@ -659,7 +659,13 @@ namespace TransformAnarchy
 
             Debug.Log("TA: Edit picker selected deco: " + deco.getReferenceName());
             _editTarget = deco;
-            deco.gameObject.SetActive(false);
+            // Only hide the original locally in single-player. In multiplayer the
+            // authoritative removal is a synced DestructCommand (see OnEditBuilderBuildTriggered);
+            // hiding it here would disable its collider, so the moved copy's
+            // destructCollidingObjects() would see a different colliding set on each
+            // peer and desync. Leave it visible until the command removes it everywhere.
+            if (!CommandController.Instance.isInMultiplayerMode())
+                deco.gameObject.SetActive(false);
             
             // Position the gizmo at the original object before the builder is created
             UseTransformFromLastBuilder = true;
@@ -686,7 +692,13 @@ namespace TransformAnarchy
             if (_editTarget != null)
             {
                 Debug.Log("TA: Has _editTarget");
-                UnityEngine.Object.Destroy(_editTarget.gameObject);
+                // Re-activate first (it may have been hidden in single-player) so destruct()
+                // runs against a live object, then remove it through the ordered command
+                // channel. DestructCommand deletes the same objectID on every peer at the same
+                // tick (MP-safe), and restores the proper refund/cleanup path that a raw
+                // UnityEngine.Object.Destroy would have skipped even in single-player.
+                _editTarget.gameObject.SetActive(true);
+                CommandController.Instance.addCommand<DestructCommand>(new DestructCommand(_editTarget));
                 _editTarget = null;
             }
             // Detach so subsequent placements (DecoBuilder stays open) don't re-fire
