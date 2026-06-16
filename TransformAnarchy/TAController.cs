@@ -80,10 +80,7 @@ namespace TransformAnarchy
         private float _blueprintScale = 1.0f;
         public float BlueprintScale => _blueprintScale;
 
-        // Blueprint scaling is a single-player-only feature. The scale is applied through a
-        // process-local static + transpiler that only runs on the acting peer, so it cannot be
-        // reproduced deterministically on remote/vanilla peers and would desync MP (MP_AUDIT F2/F5).
-        // Gate it off whenever we are in a multiplayer session.
+        // Blueprint scaling is a single player only feature
         public bool BlueprintScalingEnabled => TA.TASettings.enableBlueprintScaling && !CommandController.Instance.isInMultiplayerMode();
 
         public void UpdateBlueprintScaleFromInput()

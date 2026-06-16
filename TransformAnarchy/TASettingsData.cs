@@ -14,8 +14,7 @@ namespace TransformAnarchy
         public bool showAdvancedSettings = false;
         public bool enableBlueprintScaling = true;
 
-        // Min & max bounds for blueprint scaling
-        // Leaving these as non-adjustable for now
+        // Min & max bounds for blueprint scaling. Leaving these as non-adjustable for now.
         public float customSizeMinimum = 0.1f;
         public float customSizeMaximum = 10.0f;
     }

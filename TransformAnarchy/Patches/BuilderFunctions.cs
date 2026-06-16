@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Reflection;
 using HarmonyLib;
-using Parkitect;
 using UnityEngine;
 
 
@@ -73,11 +69,9 @@ namespace TransformAnarchy
                 refreshRepresentation = true;
             }
 
-            // Blueprint scaling check now runs regardless of gizmo state so the size
-            // hotkeys keep working even when the TA UI is closed. The ghost
-            // and Pending/Applied scale fields are kept in sync every frame
-            // so a build triggered by the original Builder.Update path
-            // (gizmo off) still scales correctly via the transpiler hooks.
+            // Blueprint scaling check now runs regardless of gizmo state so the size hotkeys keep working even when the TA UI is closed.
+            // The ghost and Pending/Applied scale fields are kept in sync every frame so a build triggered by the original Builder.Update
+            // path (gizmo off) still scales correctly via the transpiler hooks.
             if (b is BlueprintBuilder && TA.MainController.BlueprintScalingEnabled)
             {
                 TA.MainController.UpdateBlueprintScaleFromInput();
@@ -191,13 +185,6 @@ namespace TransformAnarchy
                         }
                         catch (Exception e)
                         {
-                            // buildObjects must never leak an exception past this point. The MP placement
-                            // path (rotation-bake patch + async command serialization) can throw where
-                            // single-player can't, and if it does the blueprint cleanup below would be
-                            // skipped: onlyBuildOne stays false and PendingBlueprintRotation/Scale stay set,
-                            // silently breaking every following placement. That is the "blueprint can only
-                            // be placed once in multiplayer" bug. Swallow, log, and let the finally restore
-                            // state so the next click works.
                             Debug.LogError("TA: buildObjects threw during placement (build skipped): " + e);
                         }
                         finally
