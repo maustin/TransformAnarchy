@@ -170,7 +170,7 @@ namespace TransformAnarchy
             GUILayout.Space(10);
 
             TASettings.enableBlueprintScaling = GUILayout.Toggle(TASettings.enableBlueprintScaling, " Enable Blueprint scaling");
-            GUILayout.Label("When scaling a Blueprint, only Deco objects will be scaled. Paths, rides, and shops will not scale.", guistyleTextMiddle);
+            GUILayout.Label("Blueprint scaling is not supported in Multiplayer.", guistyleTextMiddle);
 
             GUILayout.Space(10);
             GUILayout.BeginHorizontal();

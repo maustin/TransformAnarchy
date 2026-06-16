@@ -7,18 +7,10 @@ using UnityEngine;
 
 namespace TransformAnarchy
 {
-    // MP_AUDIT F3 fix. The blueprint build command only carries a "forward" direction, so a remote
-    // (or vanilla) peer rebuilds the rotation as Quaternion.LookRotation(forward) - yaw and pitch
-    // survive, but roll (the Z-axis tilt the gizmo allows) is lost. Single-player smuggles the full
-    // gizmo quaternion across via the BuilderFunctions.PendingBlueprintRotation static, consumed by
-    // the transpiler in BlueprintBuilderImplementationBuildPatch - but that static only exists on the
-    // acting peer, so it desyncs MP.
-    //
-    // The only mixed-session-safe channel is the serialized blueprint data itself. So in multiplayer
-    // we bake the full rotation into the byte stream here, at command-construction time (which runs
-    // only on the acting peer; remote peers deserialize Data directly and never hit this ctor). We
-    // pre-rotate every object and re-serialize, then set forward to identity so the standard
-    // deterministic build() reproduces the result on every peer - including vanilla peers with no TA.
+    // The build command only carries a "forward" direction, so peers rebuild rotation as
+    // LookRotation(forward) and lose the gizmo's roll. In multiplayer we bake the full rotation into the
+    // serialized blueprint stream here (this constructor runs only on the acting peer), then reset forward to identity
+    // so the deterministic build() reproduces it identically on every peer. Single-player keeps the static path.
     [HarmonyPatch]
     public class BlueprintBuildCommandBakeRotationPatch
     {
@@ -39,7 +31,7 @@ namespace TransformAnarchy
         [HarmonyPostfix]
         static void Postfix(BlueprintBuildCommand __instance)
         {
-            // Single-player keeps the existing static + transpiler path, which already works there.
+            // Single-player keeps the existing static + transpiler path.
             if (!CommandController.Instance.isInMultiplayerMode())
                 return;
 
@@ -47,13 +39,10 @@ namespace TransformAnarchy
                 return;
 
             Quaternion curRot = BuilderFunctions.PendingBlueprintRotation.Value;
-            // Never rely on the acting-peer-only static in MP - clear it so the transpiler in
-            // BlueprintBuilderImplementationBuildPatch falls through to LookRotation on every peer.
+            // Clear the acting-peer-only static so the transpiler falls through to LookRotation on every peer.
             BuilderFunctions.PendingBlueprintRotation = null;
 
-            // If the rotation is something LookRotation(forward) reproduces exactly (no roll), the
-            // forward direction already carries it - every peer rebuilds it identically, so there's
-            // nothing to bake.
+            // Nothing to bake if LookRotation(forward) already reproduces the rotation (no roll).
             Vector3 forward = curRot * Vector3.forward;
             if (Quaternion.Angle(curRot, Quaternion.LookRotation(forward)) < 0.01f)
                 return;
@@ -76,9 +65,7 @@ namespace TransformAnarchy
                     t.position = t.position.RotateAroundPivot(originalPivot, curRot);
                     t.rotation = curRot * t.rotation;
 
-                    // BuildableObject serializes from logicTransform and TreeEntity from a private
-                    // serializedRotation - both normally synced during Initialize(), which we skip.
-                    // Push the new orientation into them so the re-serialized stream actually carries it.
+                    // Push the new orientation into the fields that get serialized (normally synced in Initialize(), which we skip).
                     if (objects[i] is BuildableObject buildable)
                         buildable.updateLogicTransform();
                     if (objects[i] is TreeEntity && treeSerializedRotationField != null)
@@ -90,9 +77,7 @@ namespace TransformAnarchy
                         trackSegment.updatePositionAndLogicTransform();
                 }
 
-                // build() recomputes the pivot from the (now rotated) stream and subtracts it before
-                // adding data.position. The pivot is a floored bounding-box centre, so rotating the
-                // object cloud shifts it; compensate so the final placement matches the gizmo exactly.
+                // The floored bounding-box pivot shifts when the object cloud rotates; compensate so build()'s pivot subtraction still lands at the gizmo position.
                 Vector3 bakedPivot = BlueprintBuilder.getPivot(objects);
 
                 byte[] baked = SerializeBlueprintObjects(objects);
@@ -104,8 +89,7 @@ namespace TransformAnarchy
             }
             catch (Exception e)
             {
-                // On failure the command is left with its original forward (which still carries yaw +
-                // pitch) and no static, so every peer stays deterministic - only the roll is lost.
+                // On failure the original forward still carries yaw + pitch, so peers stay deterministic - only roll is lost.
                 Debug.LogError("TA: BlueprintBuildCommandBakeRotationPatch failed to bake rotation, falling back to yaw/pitch: " + e);
             }
             finally
@@ -121,10 +105,7 @@ namespace TransformAnarchy
             }
         }
 
-        // Deserializes the blueprint stream into transient instances (mirroring the first half of
-        // BlueprintBuilderImplementation.build), but never calls Initialize() - so the objects are
-        // never registered with the park. They exist only long enough to be re-serialized, then are
-        // destroyed by the caller.
+        // Deserializes the blueprint stream into transient instances (never calls Initialize(), so they aren't registered with the park) for re-serialization; the caller destroys them.
         private static List<SerializedMonoBehaviour> DeserializeBlueprintObjects(byte[] blueprintData, LoadOptions loadOptions)
         {
             var result = new List<SerializedMonoBehaviour>();
@@ -145,9 +126,7 @@ namespace TransformAnarchy
             return result;
         }
 
-        // Re-serializes the objects through the game's BlueprintSerializer and strips the outer "SM"
-        // container header, returning the bare gzip stream that BlueprintBuildCommand.Data.blueprintData
-        // expects (the same form generateBuildCommands feeds in via getBlueprintDataStream).
+        // Re-serializes via BlueprintSerializer and strips the outer "SM" header, returning the bare gzip stream that BlueprintBuildCommand.Data.blueprintData expects.
         private static byte[] SerializeBlueprintObjects(List<SerializedMonoBehaviour> objects)
         {
             byte[] serialized = new BlueprintSerializer(objects, "TransformAnarchy baked blueprint").getSerialized();

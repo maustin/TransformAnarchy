@@ -667,11 +667,7 @@ namespace TransformAnarchy
 
             Debug.Log("TA: Edit picker selected deco: " + deco.getReferenceName());
             _editTarget = deco;
-            // Only hide the original locally in single-player. In multiplayer the
-            // authoritative removal is a synced DestructCommand (see OnEditBuilderBuildTriggered);
-            // hiding it here would disable its collider, so the moved copy's
-            // destructCollidingObjects() would see a different colliding set on each
-            // peer and desync. Leave it visible until the command removes it everywhere.
+            // Single-player only: hiding it disables its collider, so in MP the moved copy's destructCollidingObjects() would differ per peer and desync. MP removes it via a synced DestructCommand instead (see OnEditBuilderBuildTriggered).
             if (!CommandController.Instance.isInMultiplayerMode())
                 deco.gameObject.SetActive(false);
             
@@ -700,11 +696,7 @@ namespace TransformAnarchy
             if (_editTarget != null)
             {
                 Debug.Log("TA: Has _editTarget");
-                // Re-activate first (it may have been hidden in single-player) so destruct()
-                // runs against a live object, then remove it through the ordered command
-                // channel. DestructCommand deletes the same objectID on every peer at the same
-                // tick (MP-safe), and restores the proper refund/cleanup path that a raw
-                // UnityEngine.Object.Destroy would have skipped even in single-player.
+                // Re-activate (it may have been hidden in SP) so destruct() runs against a live object, then remove it via DestructCommand: MP-safe (same objectID, same tick on every peer) and it restores the refund/cleanup path a raw Destroy would skip.
                 _editTarget.gameObject.SetActive(true);
                 CommandController.Instance.addCommand<DestructCommand>(new DestructCommand(_editTarget));
                 _editTarget = null;
@@ -910,9 +902,7 @@ namespace TransformAnarchy
                 _dontUpdateGrid = false;
             }
 
-            // Reimplement size hotkeys directly. BlueprintBuilder scaling is
-            // handled in BuilderFunctions.MainTAPrefix so it works whether or
-            // not the gizmo/UI is active.
+            // Reimplement size hotkeys directly; BlueprintBuilder scaling is handled in BuilderFunctions.MainTAPrefix so it works whether or not the gizmo/UI is active.
             if (!(CurrentBuilder is BlueprintBuilder))
             {
                 if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
