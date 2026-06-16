@@ -78,7 +78,7 @@ namespace TransformAnarchy
             // and Pending/Applied scale fields are kept in sync every frame
             // so a build triggered by the original Builder.Update path
             // (gizmo off) still scales correctly via the transpiler hooks.
-            if (b is BlueprintBuilder && TA.TASettings.enableBlueprintScaling)
+            if (b is BlueprintBuilder && TA.MainController.BlueprintScalingEnabled)
             {
                 TA.MainController.UpdateBlueprintScaleFromInput();
                 ___ghost.transform.localScale = Vector3.one * TA.MainController.BlueprintScale;
@@ -178,18 +178,37 @@ namespace TransformAnarchy
                         {
                             onlyBuildOneField.SetValue(b, false);
                             PendingBlueprintRotation = curRot;
-                            PendingBlueprintScale = TA.MainController.BlueprintScale;
-                            AppliedBlueprintScale = TA.MainController.BlueprintScale;
+                            if (TA.MainController.BlueprintScalingEnabled)
+                            {
+                                PendingBlueprintScale = TA.MainController.BlueprintScale;
+                                AppliedBlueprintScale = TA.MainController.BlueprintScale;
+                            }
                         }
 
-                        PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
-
-                        if (isBlueprintBuilder)
+                        try
                         {
-                            onlyBuildOneField.SetValue(b, true);
-                            PendingBlueprintRotation = null;
-                            PendingBlueprintScale = null;
-                            // AppliedBlueprintScale intentionally left set; cleared in onAfterBuild postfix
+                            PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
+                        }
+                        catch (Exception e)
+                        {
+                            // buildObjects must never leak an exception past this point. The MP placement
+                            // path (rotation-bake patch + async command serialization) can throw where
+                            // single-player can't, and if it does the blueprint cleanup below would be
+                            // skipped: onlyBuildOne stays false and PendingBlueprintRotation/Scale stay set,
+                            // silently breaking every following placement. That is the "blueprint can only
+                            // be placed once in multiplayer" bug. Swallow, log, and let the finally restore
+                            // state so the next click works.
+                            Debug.LogError("TA: buildObjects threw during placement (build skipped): " + e);
+                        }
+                        finally
+                        {
+                            if (isBlueprintBuilder)
+                            {
+                                onlyBuildOneField.SetValue(b, true);
+                                PendingBlueprintRotation = null;
+                                PendingBlueprintScale = null;
+                                // AppliedBlueprintScale intentionally left set; cleared in onAfterBuild postfix
+                            }
                         }
                     }
                     else

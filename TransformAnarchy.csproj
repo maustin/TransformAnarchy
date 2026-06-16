@@ -339,6 +339,8 @@
     <Content Include="Res\ui_icon_rotationGizmoDisabled.png" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuildCommandBakeRotationPatch.cs" />
+    <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderCreateBuildPreviewDataPrefix.cs" />
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderImplementationBuildPatch.cs" />
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderCancelBuildingPrefix.cs" />
     <Compile Include="TransformAnarchy\Patches\BlueprintBuilder\BlueprintBuilderOnDisablePrefix.cs" />
