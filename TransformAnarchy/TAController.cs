@@ -45,7 +45,7 @@ namespace TransformAnarchy
 
         public GameObject UITransform;
 
-        // Coordinate text-entry UI (this UI is separate from the main UI prefab and needs to be handled manually)
+        // Coord text-entry UI - not part of the main UI prefab so we build it by hand
         private GameObject _coordDisplayGO;
         private TACoordDisplay _coordDisplay;
         private bool _coordDisplayVisible = false;
@@ -412,7 +412,7 @@ namespace TransformAnarchy
 
             UITransform.transform.position = uiScreenPos;
 
-            // The coordinate UI pieces are children of UITransform so they follow it (and the canvas scale) automatically
+            // coord UI pieces are children of UITransform so they follow it (and the canvas scale) on their own
 
         }
 
@@ -562,7 +562,7 @@ namespace TransformAnarchy
             UIGizmoToggleButton.button.onClick.AddListener(() => SetGizmoEnabled(!GizmoEnabled));
             UIResetRotationButton.button.onClick.AddListener(ResetGizmoRotation);
 
-            // Coordinate display panel (child of UITransform so it inherits position and canvas scaling automatically)
+            // coord display panel - child of UITransform so it inherits position and canvas scaling
             RectTransform uiHolderRT = UITransform.GetComponent<RectTransform>();
 
             _coordDisplayGO = new GameObject("TA_CoordDisplay");
@@ -572,9 +572,9 @@ namespace TransformAnarchy
             coordRT.anchorMax = uiHolderRT.pivot;
             coordRT.pivot = new Vector2(0.5f, 0.5f);
             coordRT.sizeDelta = Vector2.zero;
-            coordRT.anchoredPosition = new Vector2(81f, -93.75f); // offset in canvas units from the button cluster anchor
+            coordRT.anchoredPosition = new Vector2(81f, -93.75f); // canvas units, offset from the button cluster
             LayoutElement coordLE = _coordDisplayGO.AddComponent<LayoutElement>();
-            coordLE.ignoreLayout = true; // in case the UiHolder prefab root has a layout group
+            coordLE.ignoreLayout = true; // in case the prefab root has a layout group
             _coordDisplay = _coordDisplayGO.AddComponent<TACoordDisplay>();
             _coordDisplay.Initialize();
             _coordDisplay.OnPositionCommit += OnCoordPositionCommit;
@@ -594,9 +594,9 @@ namespace TransformAnarchy
             toggleRT.sizeDelta = new Vector2(30f, 30f);
             toggleRT.anchorMin = uiHolderRT.pivot;
             toggleRT.anchorMax = uiHolderRT.pivot;
-            toggleRT.anchoredPosition = new Vector2(48.75f, -33f); // offset in canvas units from the button cluster anchor
+            toggleRT.anchoredPosition = new Vector2(48.75f, -33f); // canvas units, offset from the button cluster
             LayoutElement toggleLE = _coordDisplayToggleGO.AddComponent<LayoutElement>();
-            toggleLE.ignoreLayout = true; // in case the UiHolder prefab root has a layout group
+            toggleLE.ignoreLayout = true; // in case the prefab root has a layout group
 
             Image toggleBg = _coordDisplayToggleGO.AddComponent<Image>();
             toggleBg.sprite = TA.InfoPipCircleSprite;
@@ -667,7 +667,7 @@ namespace TransformAnarchy
 
             Debug.Log("TA: Edit picker selected deco: " + deco.getReferenceName());
             _editTarget = deco;
-            // Single-player only: hiding it disables its collider, so in MP the moved copy's destructCollidingObjects() would differ per peer and desync. MP removes it via a synced DestructCommand instead (see OnEditBuilderBuildTriggered).
+            // SP only - hiding it kills the collider, which in MP would make destructCollidingObjects() differ per peer and desync. MP removes it with a synced DestructCommand instead (see OnEditBuilderBuildTriggered)
             if (!CommandController.Instance.isInMultiplayerMode())
                 deco.gameObject.SetActive(false);
             
@@ -696,7 +696,7 @@ namespace TransformAnarchy
             if (_editTarget != null)
             {
                 Debug.Log("TA: Has _editTarget");
-                // Re-activate (it may have been hidden in SP) so destruct() runs against a live object, then remove it via DestructCommand: MP-safe (same objectID, same tick on every peer) and it restores the refund/cleanup path a raw Destroy would skip.
+                // turn it back on (might've been hidden in SP) so destruct() hits a live object, then kill it through a DestructCommand - same objectID/tick on every peer, and it keeps the refund/cleanup that a raw Destroy skips
                 _editTarget.gameObject.SetActive(true);
                 CommandController.Instance.addCommand<DestructCommand>(new DestructCommand(_editTarget));
                 _editTarget = null;
@@ -902,7 +902,7 @@ namespace TransformAnarchy
                 _dontUpdateGrid = false;
             }
 
-            // Reimplement size hotkeys directly; BlueprintBuilder scaling is handled in BuilderFunctions.MainTAPrefix so it works whether or not the gizmo/UI is active.
+            // size hotkeys, done here directly. BlueprintBuilder scaling lives in BuilderFunctions.MainTAPrefix so it works with the gizmo/UI open or not
             if (!(CurrentBuilder is BlueprintBuilder))
             {
                 if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())

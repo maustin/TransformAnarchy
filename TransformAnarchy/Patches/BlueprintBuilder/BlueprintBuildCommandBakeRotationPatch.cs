@@ -7,10 +7,9 @@ using UnityEngine;
 
 namespace TransformAnarchy
 {
-    // The build command only carries a "forward" direction, so peers rebuild rotation as
-    // LookRotation(forward) and lose the gizmo's roll. In multiplayer we bake the full rotation into the
-    // serialized blueprint stream here (this constructor runs only on the acting peer), then reset forward to identity
-    // so the deterministic build() reproduces it identically on every peer. Single-player keeps the static path.
+    // The build command only carries a "forward", so peers rebuild rotation with LookRotation and lose the roll.
+    // In MP we bake the full rotation into the serialized blueprint here (runs on the acting peer only), then
+    // reset forward so build() reproduces it the same on everyone. SP keeps the static path.
     [HarmonyPatch]
     public class BlueprintBuildCommandBakeRotationPatch
     {
@@ -22,16 +21,16 @@ namespace TransformAnarchy
             MethodBase ctor = AccessTools.Constructor(typeof(BlueprintBuildCommand),
                 new Type[] { typeof(byte[]), typeof(Vector3), typeof(Vector3), typeof(LoadOptions) });
             if (ctor != null)
-                Debug.Log("TA F3: BlueprintBuildCommand(byte[], Vector3, Vector3, LoadOptions) constructor found");
+                Debug.Log("TA: BlueprintBuildCommand(byte[], Vector3, Vector3, LoadOptions) constructor found");
             else
-                Debug.LogError("TA F3: BlueprintBuildCommand constructor NOT FOUND");
+                Debug.LogError("TA: BlueprintBuildCommand constructor NOT FOUND");
             return ctor;
         }
 
         [HarmonyPostfix]
         static void Postfix(BlueprintBuildCommand __instance)
         {
-            // Single-player keeps the existing static + transpiler path.
+            // SP keeps the static + transpiler path.
             if (!CommandController.Instance.isInMultiplayerMode())
                 return;
 
@@ -39,10 +38,10 @@ namespace TransformAnarchy
                 return;
 
             Quaternion curRot = BuilderFunctions.PendingBlueprintRotation.Value;
-            // Clear the acting-peer-only static so the transpiler falls through to LookRotation on every peer.
+            // clear it so the transpiler falls through to LookRotation on every peer
             BuilderFunctions.PendingBlueprintRotation = null;
 
-            // Nothing to bake if LookRotation(forward) already reproduces the rotation (no roll).
+            // no roll? then LookRotation already gets it right, nothing to bake
             Vector3 forward = curRot * Vector3.forward;
             if (Quaternion.Angle(curRot, Quaternion.LookRotation(forward)) < 0.01f)
                 return;
@@ -56,7 +55,7 @@ namespace TransformAnarchy
                 if (objects.Count == 0)
                     return;
 
-                // Mirror BlueprintBuilderImplementation.build(): Track4 objects are left untransformed.
+                // same as BlueprintBuilderImplementation.build() - leave Track4 objects alone
                 Vector3 originalPivot = BlueprintBuilder.getPivot(objects);
                 for (int i = 0; i < objects.Count; i++)
                 {
@@ -65,7 +64,7 @@ namespace TransformAnarchy
                     t.position = t.position.RotateAroundPivot(originalPivot, curRot);
                     t.rotation = curRot * t.rotation;
 
-                    // Push the new orientation into the fields that get serialized (normally synced in Initialize(), which we skip).
+                    // push the orientation into the serialized fields (Initialize() normally does this but we skip it)
                     if (objects[i] is BuildableObject buildable)
                         buildable.updateLogicTransform();
                     if (objects[i] is TreeEntity && treeSerializedRotationField != null)
@@ -77,7 +76,7 @@ namespace TransformAnarchy
                         trackSegment.updatePositionAndLogicTransform();
                 }
 
-                // The floored bounding-box pivot shifts when the object cloud rotates; compensate so build()'s pivot subtraction still lands at the gizmo position.
+                // pivot moves when the cloud rotates - shift position to compensate so build() still lands at the gizmo
                 Vector3 bakedPivot = BlueprintBuilder.getPivot(objects);
 
                 byte[] baked = SerializeBlueprintObjects(objects);
@@ -89,7 +88,7 @@ namespace TransformAnarchy
             }
             catch (Exception e)
             {
-                // On failure the original forward still carries yaw + pitch, so peers stay deterministic - only roll is lost.
+                // if this fails the original forward still has yaw + pitch, so peers stay in sync - we just lose roll
                 Debug.LogError("TA: BlueprintBuildCommandBakeRotationPatch failed to bake rotation, falling back to yaw/pitch: " + e);
             }
             finally
@@ -105,7 +104,7 @@ namespace TransformAnarchy
             }
         }
 
-        // Deserializes the blueprint stream into transient instances (never calls Initialize(), so they aren't registered with the park) for re-serialization; the caller destroys them.
+        // deserialize the blueprint into throwaway objects (no Initialize() so they never register with the park). caller destroys them.
         private static List<SerializedMonoBehaviour> DeserializeBlueprintObjects(byte[] blueprintData, LoadOptions loadOptions)
         {
             var result = new List<SerializedMonoBehaviour>();
@@ -126,7 +125,7 @@ namespace TransformAnarchy
             return result;
         }
 
-        // Re-serializes via BlueprintSerializer and strips the outer "SM" header, returning the bare gzip stream that BlueprintBuildCommand.Data.blueprintData expects.
+        // re-serialize and strip the "SM" header back off, leaving the bare gzip stream that Data.blueprintData wants
         private static byte[] SerializeBlueprintObjects(List<SerializedMonoBehaviour> objects)
         {
             byte[] serialized = new BlueprintSerializer(objects, "TransformAnarchy baked blueprint").getSerialized();

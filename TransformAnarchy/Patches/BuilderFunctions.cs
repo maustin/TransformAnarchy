@@ -69,8 +69,7 @@ namespace TransformAnarchy
                 refreshRepresentation = true;
             }
 
-            // Runs regardless of gizmo state so the size hotkeys keep working with the TA UI closed, keeping the ghost and scale fields in sync each frame so a
-            // gizmo-off build still scales via the transpiler hooks.
+            // Not gated on the gizmo so size hotkeys still work with the UI closed - keep the ghost and scale in sync every frame so a gizmo-off build scales too
             if (b is BlueprintBuilder && TA.MainController.BlueprintScalingEnabled)
             {
                 TA.MainController.UpdateBlueprintScaleFromInput();
@@ -193,7 +192,7 @@ namespace TransformAnarchy
                                 onlyBuildOneField.SetValue(b, true);
                                 PendingBlueprintRotation = null;
                                 PendingBlueprintScale = null;
-                                // AppliedBlueprintScale intentionally left set; cleared in onAfterBuild postfix
+                                // leave AppliedBlueprintScale set - the onAfterBuild postfix clears it
                             }
                         }
                     }

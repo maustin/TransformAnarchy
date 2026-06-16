@@ -15,11 +15,11 @@ namespace TransformAnarchy
         private GameObject _positionPanel;
         private GameObject _rotationPanel;
 
-        // Last-known values used to restore a field if the user types invalid input
+        // last good values, so we can put them back if someone types garbage
         private Vector3 _lastPosition;
         private Vector3 _lastEuler;
 
-        // When true, programmatic text changes won't trigger commit callbacks
+        // set while we're writing text ourselves so the commit callback doesn't fire
         private bool _suppressCallbacks;
 
         public void Initialize()
@@ -60,7 +60,7 @@ namespace TransformAnarchy
             vlg.spacing = 2f;
             vlg.childControlWidth = true;
             vlg.childControlHeight = false;
-            vlg.childForceExpandWidth  = true;
+            vlg.childForceExpandWidth = true;
             vlg.childForceExpandHeight = false;
 
             var csf = panel.AddComponent<ContentSizeFitter>();
@@ -81,8 +81,8 @@ namespace TransformAnarchy
             hlg.spacing = 4f;
             hlg.childControlHeight = true;
             hlg.childForceExpandHeight = true;
-            hlg.childControlWidth  = false;
-            hlg.childForceExpandWidth  = false;
+            hlg.childControlWidth = false;
+            hlg.childForceExpandWidth = false;
 
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(row.transform, false);
@@ -139,19 +139,19 @@ namespace TransformAnarchy
             var phGO = new GameObject("Placeholder");
             phGO.transform.SetParent(go.transform, false);
             var phRT = phGO.AddComponent<RectTransform>();
-            phRT.anchorMin  = Vector2.zero;
-            phRT.anchorMax  = Vector2.one;
-            phRT.offsetMin  = new Vector2(4f,  2f);
-            phRT.offsetMax  = new Vector2(-4f, -2f);
+            phRT.anchorMin = Vector2.zero;
+            phRT.anchorMax = Vector2.one;
+            phRT.offsetMin = new Vector2(4f, 2f);
+            phRT.offsetMax = new Vector2(-4f, -2f);
             var phText = phGO.AddComponent<Text>();
-            phText.font      = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            phText.fontSize  = 11;
-            phText.color     = new Color(1f, 1f, 1f, 0.3f);
+            phText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            phText.fontSize = 11;
+            phText.color = new Color(1f, 1f, 1f, 0.3f);
             phText.fontStyle = FontStyle.Italic;
-            phText.text      = "0.00";
+            phText.text = "0.00";
             phText.alignment = TextAnchor.MiddleRight;
             field.placeholder = phText;
-            field.navigation  = new Navigation { mode = Navigation.Mode.None };
+            field.navigation = new Navigation { mode = Navigation.Mode.None };
 
             return field;
         }
@@ -168,7 +168,7 @@ namespace TransformAnarchy
             if (fields == null) return;
 
             bool backward = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            int step = backward ? 2 : 1; // +2 mod 3 == -1 mod 3
+            int step = backward ? 2 : 1; // +2 wraps around to go back one
 
             for (int i = 0; i < 3; i++)
             {
@@ -185,7 +185,7 @@ namespace TransformAnarchy
         {
             for (int i = 0; i < 3; i++)
             {
-                int axis = i; // capture for lambda
+                int axis = i;
                 fields[i].onEndEdit.AddListener(value =>
                 {
                     if (!_suppressCallbacks)
@@ -198,7 +198,7 @@ namespace TransformAnarchy
         {
             if (!float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float result))
             {
-                // Restore the last-known valid value on bad input
+                // bad input, put the last good value back
                 if (isPosition)
                     SetText(_positionFields[axis], _lastPosition[axis], "F2");
                 else
@@ -225,7 +225,7 @@ namespace TransformAnarchy
         public void UpdatePosition(Vector3 worldPos)
         {
             _lastPosition = worldPos;
-            // Skip update while the user is actively editing a field
+            // don't stomp on a field the user is editing
             if (AnyFocused(_positionFields)) return;
 
             _suppressCallbacks = true;
@@ -238,7 +238,7 @@ namespace TransformAnarchy
         public void UpdateRotation(Vector3 euler)
         {
             _lastEuler = euler;
-            // Skip update while the user is actively editing a field
+            // don't stomp on a field the user is editing
             if (AnyFocused(_rotationFields)) return;
 
             _suppressCallbacks = true;

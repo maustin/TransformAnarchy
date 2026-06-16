@@ -2,11 +2,10 @@ using HarmonyLib;
 using System.Reflection;
 using UnityEngine;
 
-// TA reuses one blueprint ghost across placements (onlyBuildOne = false), but each placement's build command
-// destroys that ghost's combinedHullMesh. In MP the command runs async, so by the second placement the MP
-// preview (Builder.addToMultiplayerBuildPreview) calls DrawMesh on a destroyed mesh and throws, aborting the
-// build - a TA blueprint could only ever be placed once in MP. Fix: drop the stale combined hull before the
-// MP preview is built so the engine falls back to drawing the live ghost objects. (SP never draws this preview.)
+// We reuse one ghost across placements, but each build command destroys its combinedHullMesh. In MP the command
+// runs async, so the next placement's preview ends up calling DrawMesh on a dead mesh and throws - meaning a TA
+// blueprint could only be placed once in MP. So drop the stale hull first and let the engine draw the live ghosts.
+// (SP never draws this preview.)
 [HarmonyPatch]
 class BlueprintBuilderCreateBuildPreviewDataPrefix {
     static readonly FieldInfo combinedHullMeshField = AccessTools.Field(typeof(Builder), "combinedHullMesh");
@@ -23,13 +22,13 @@ class BlueprintBuilderCreateBuildPreviewDataPrefix {
 
     [HarmonyPrefix]
     static void Prefix(BlueprintBuilder __instance) {
-        // Only the MP preview path draws these meshes.
+        // only the MP preview draws these
         if (!CommandController.Instance.isInMultiplayerMode()) return;
 
         GameObject combinedHullMesh = (GameObject)combinedHullMeshField.GetValue(__instance);
         if (combinedHullMesh == null) return;
 
-        // If any mesh was destroyed by a previous placement's build command, the whole combined hull is stale - drop it.
+        // if a previous build destroyed any mesh the whole hull is stale, so toss it
         foreach (MeshFilter meshFilter in combinedHullMesh.GetComponentsInChildren<MeshFilter>()) {
             if (meshFilter.sharedMesh == null) {
                 Object.Destroy(combinedHullMesh);
