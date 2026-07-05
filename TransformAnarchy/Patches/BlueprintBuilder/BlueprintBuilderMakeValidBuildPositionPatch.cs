@@ -1,17 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using Parkitect;
 using UnityEngine;
 using HarmonyLib;
 using System.Reflection;
 
 namespace TransformAnarchy
 {
-
     [HarmonyPatch]
     public class BlueprintBuilderMakeValidBuildPositionPatch
     {
-
         // Get protected method and make it public so we can patch
         static MethodBase TargetMethod() => AccessTools.Method(typeof(BlueprintBuilder), "makeValidBuildPosition", parameters: new Type[]{typeof(Vector3)});
 

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Parkitect;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using HarmonyLib;
 using System.Reflection;
@@ -30,7 +28,7 @@ namespace TransformAnarchy
             ref Dictionary<BuildableObject, BuildableObject.CanBuild> ___builtObjectsCanBuildCache,
             ref BuildableObject.CanBuild ___canBuild, ref GameObject ___snapIndicator)
         {
-
+            
             bool runMethodAfter = BuilderFunctions.MainTAPrefix(
                 ref ___ghost, ref ___ghostPos, ref ___rotation,
                 ref ___forward, ref ___actualBuiltObjects,

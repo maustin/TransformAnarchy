@@ -1,20 +1,15 @@
-﻿using System;
+﻿using HarmonyLib;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using Parkitect;
-using UnityEngine;
-using HarmonyLib;
-using System.Windows.Markup;
 using System.IO;
-using MiniJSON;
-using Mono.Security.Authenticode;
-using System.Net.Sockets;
+using System.Reflection;
+using UnityEngine;
 
 namespace TransformAnarchy
 {
     public class TA : AbstractMod, IModSettings
     {
-        public const string VERSION_NUMBER = "1.3";
+        public const string VERSION_NUMBER = "1.4";
         public override string getIdentifier() => "com.parkitectCommunity.TA";
         public override string getName() => "Transform Anarchy";
         public override string getDescription() => @"Adds an advanced building gizmo for select building types.";
@@ -46,6 +41,25 @@ namespace TransformAnarchy
         public static Sprite GlobalSprite;
         public static Sprite OriginMoveSprite;
         public static Sprite TickSprite;
+        public static Sprite InfoPipCircleSprite;
+
+        public enum LOOSE_TEXTURES {
+            SCALE_BUTTON,
+            NUMERIC_ENTRY_OPEN_BUTTON,
+            NUMERIC_ENTRY_CLOSE_BUTTON,
+        };
+
+        private static Dictionary<LOOSE_TEXTURES, string> LooseTextureFilenames = new Dictionary<LOOSE_TEXTURES, string>() {
+            { LOOSE_TEXTURES.SCALE_BUTTON, "Res/resize.png" },
+            { LOOSE_TEXTURES.NUMERIC_ENTRY_OPEN_BUTTON, "Res/NumericEntryToggle-closed.png" },
+            { LOOSE_TEXTURES.NUMERIC_ENTRY_CLOSE_BUTTON, "Res/NumericEntryToggle-open.png" },
+        };
+        private static Dictionary<LOOSE_TEXTURES, Texture2D> LooseTextures;
+
+        public static Texture2D GetLooseTexture(LOOSE_TEXTURES textureName) {
+            if (LooseTextures.ContainsKey(textureName)) return LooseTextures[textureName];
+            return null;
+        }
 
         public TA()
         {
@@ -87,9 +101,12 @@ namespace TransformAnarchy
             GlobalSprite = loadedAB.LoadAsset<Sprite>("assets/ui_icon_global.png");
             OriginMoveSprite = loadedAB.LoadAsset<Sprite>("assets/ui_icon_pivot.png");
             TickSprite = loadedAB.LoadAsset<Sprite>("assets/ui_icon_build.png");
+            InfoPipCircleSprite = loadedAB.LoadAsset<Sprite>("assets/ui_infopip_circle.png");
 
             loadedAB.Unload(false);
             Debug.Log("TA: Loaded assetbundle!");
+
+            loadLooseTextures();
 
             // Actually loading TA
             Debug.Log("TA: Initing Main Transform Anarchy handler");
@@ -104,6 +121,8 @@ namespace TransformAnarchy
 
         public override void onDisabled()
         {
+            Debug.Log("TA: Disable");
+
             UnregisterHotkeys();
             UnityEngine.Object.Destroy(MainController.gameObject);
 
@@ -139,18 +158,26 @@ namespace TransformAnarchy
             GUILayout.BeginHorizontal();
             GUILayout.Label("Version", guistyleTextLeft, GUILayout.Width(175));
             GUILayout.Label(VERSION_NUMBER, guistyleTextMiddle);
-            if (GUILayout.Button("Advanced settings", guistyleButton, GUILayout.Width(125)))
-            {
-                TASettings.showAdvancedSettings = !TASettings.showAdvancedSettings;
-                onDrawSettingsUI();
-            }
             GUILayout.EndHorizontal();
 
-            GUILayout.Space(30);
+            GUILayout.Space(10);
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("Default rotation angle", guistyleTextLeft, GUILayout.Width(175));
             rotationAngleString = GUILayout.TextField(rotationAngleString, 7, guistyleField);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(10);
+
+            TASettings.enableBlueprintScaling = GUILayout.Toggle(TASettings.enableBlueprintScaling, " Enable Blueprint scaling");
+            GUILayout.Label("Blueprint scaling is not supported in Multiplayer.", guistyleTextMiddle);
+
+            GUILayout.Space(10);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Advanced settings", guistyleButton, GUILayout.Width(125))) {
+                TASettings.showAdvancedSettings = !TASettings.showAdvancedSettings;
+                onDrawSettingsUI();
+            }
             GUILayout.EndHorizontal();
 
             if (TASettings.showAdvancedSettings == true)
@@ -184,12 +211,6 @@ namespace TransformAnarchy
                 TASettings.gizmoRenderBehaviourString = GUILayout.SelectionGrid(TASettings.gizmoRenderBehaviourString, gizmoRenderBehaviourString, 2, guistyleButton);
                 GUILayout.EndHorizontal();
             }
-
-            GUILayout.Space(50);
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Vertical rotation on blueprints and flatrides is not supported", guistyleTextMiddle);
-            GUILayout.EndHorizontal();
 
             // Check the values when enter is pressed
             if (Event.current.isKey && Event.current.keyCode == KeyCode.Return)
@@ -241,6 +262,8 @@ namespace TransformAnarchy
 
         public void RegisterHotkeys()
         {
+            Debug.Log("TA: RegisterHotkeys");
+
             _keys = new KeybindManager("TA_KEYS", "Transform Anarchy");
 
             _keys.AddKeybind("togglePivotEdit", "Toggle Pivot Offset", "Toggles whether the pivot or the object will move.", UnityEngine.KeyCode.U);
@@ -257,6 +280,8 @@ namespace TransformAnarchy
 
         public void UnregisterHotkeys()
         {
+            Debug.Log("TA: UnregisterHotkeys");
+
             _keys.UnregisterAll();
         }
 
@@ -294,6 +319,54 @@ namespace TransformAnarchy
 
             // Save JSON data to the TA settings file
             File.WriteAllText(_taSettingsFilePath, json);
+        }
+
+        private void loadLooseTextures() {
+            Debug.Log("TA: Load loose textures");
+            if (LooseTextures != null) {
+                Debug.Log("TA: Already loaded");
+                return;
+            }
+
+            LooseTextures = new Dictionary<LOOSE_TEXTURES, Texture2D>();
+
+            var currentModDirectory = System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            Debug.Log("TA: mod directory: " + currentModDirectory);
+
+            foreach (LOOSE_TEXTURES value in Enum.GetValues(typeof(LOOSE_TEXTURES))) {
+                loadLooseTexture(currentModDirectory, value);
+            }
+            Debug.Log("TA: Finished loading loose textures");
+        }
+
+        private void loadLooseTexture(string currentModDirectory, LOOSE_TEXTURES textureName) {
+            if (!LooseTextureFilenames.ContainsKey(textureName)) {
+                Debug.Log("TA: No filepath for loose texture: " + textureName);
+                return;
+            }
+            var filename = LooseTextureFilenames[textureName];
+            Debug.Log("TA: Attempt to load loose texture: " + filename);
+
+            try {
+                var filepath = System.IO.Path.Combine(currentModDirectory, filename);
+                Debug.Log("TA: File path: " + filepath);
+                if (File.Exists(filepath)) {
+                    byte[] fileData = File.ReadAllBytes(filepath);
+                    var newTexture = new Texture2D(2, 2);
+                    newTexture.LoadImage(fileData);
+                    newTexture.wrapMode = TextureWrapMode.Clamp;
+                    newTexture.filterMode = FilterMode.Bilinear;
+                    LooseTextures.Add(textureName, newTexture);
+                    Debug.Log("TA: Loaded texture");
+                } else {
+                    Debug.Log("TA: Couldn't find texture file");
+                }
+            }
+            catch (Exception e) {
+                Debug.Log("TA: Failed to load loose texture");
+                Debug.Log(e.ToString());
+            }
+
         }
     }
 }

@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Reflection;
 using HarmonyLib;
-using Parkitect;
 using UnityEngine;
 
 
@@ -34,6 +30,12 @@ namespace TransformAnarchy
 
         public static MethodBase changeSize = AccessTools.Method(typeof(Builder), "changeSize", parameters: new Type[] { typeof(float) });
 
+        public static FieldInfo onlyBuildOneField = AccessTools.Field(typeof(Builder), "onlyBuildOne");
+
+        public static Quaternion? PendingBlueprintRotation;
+        public static float? PendingBlueprintScale;
+        public static float? AppliedBlueprintScale;
+
         public static bool MainTAPrefix(
                 ref GameObject ___ghost, ref Vector3 ___ghostPos, ref Quaternion ___rotation,
                 ref Vector3 ___forward, ref List<BuildableObject> ___actualBuiltObjects,
@@ -45,6 +47,11 @@ namespace TransformAnarchy
 
             // Builder is actually editable?
             if (TA.MainController.CurrentBuilder == null)
+            {
+                return true;
+            }
+
+            if (___ghost == null)
             {
                 return true;
             }
@@ -62,6 +69,14 @@ namespace TransformAnarchy
                 refreshRepresentation = true;
             }
 
+            // Not gated on the gizmo so size hotkeys still work with the UI closed - keep the ghost and scale in sync every frame so a gizmo-off build scales too
+            if (b is BlueprintBuilder && TA.MainController.BlueprintScalingEnabled)
+            {
+                TA.MainController.UpdateBlueprintScaleFromInput();
+                ___ghost.transform.localScale = Vector3.one * TA.MainController.BlueprintScale;
+                PendingBlueprintScale = TA.MainController.BlueprintScale;
+                AppliedBlueprintScale = TA.MainController.BlueprintScale;
+            }
 
             if (TA.MainController.GizmoEnabled)
             {
@@ -110,6 +125,8 @@ namespace TransformAnarchy
                 // Update visual ghost position
                 ___ghost.transform.position = curPos;
                 ___ghost.transform.rotation = curRot;
+                if (b is BlueprintBuilder)
+                    ___ghost.transform.localScale = Vector3.one * TA.MainController.BlueprintScale;
 
                 // Update place at ghost position
                 ___ghostPos = curPos;
@@ -141,13 +158,43 @@ namespace TransformAnarchy
 
                     if (TA.MainController.ForceBuildThisFrame)
                     {
+                        Debug.Log("TA: Force build");
                         TA.MainController.ForceBuildThisFrame = false;
                     }
 
                     // Actually can build
                     if (___canBuild.result)
                     {
-                        PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
+                        bool isBlueprintBuilder = b is BlueprintBuilder;
+                        if (isBlueprintBuilder)
+                        {
+                            onlyBuildOneField.SetValue(b, false);
+                            PendingBlueprintRotation = curRot;
+                            if (TA.MainController.BlueprintScalingEnabled)
+                            {
+                                PendingBlueprintScale = TA.MainController.BlueprintScale;
+                                AppliedBlueprintScale = TA.MainController.BlueprintScale;
+                            }
+                        }
+
+                        try
+                        {
+                            PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogError("TA: buildObjects threw during placement (build skipped): " + e);
+                        }
+                        finally
+                        {
+                            if (isBlueprintBuilder)
+                            {
+                                onlyBuildOneField.SetValue(b, true);
+                                PendingBlueprintRotation = null;
+                                PendingBlueprintScale = null;
+                                // leave AppliedBlueprintScale set - the onAfterBuild postfix clears it
+                            }
+                        }
                     }
                     else
                     {

@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace TransformAnarchy
@@ -37,7 +35,6 @@ namespace TransformAnarchy
             _startingAxis = AxisChange;
         }
 
-        // Handles the 
         public override void OnDrag(DragInformation eventInfo)
         {
 

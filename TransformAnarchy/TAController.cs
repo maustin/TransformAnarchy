@@ -1,10 +1,10 @@
-﻿using System;
+﻿using HarmonyLib;
+using Parkitect.UI;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using Parkitect.UI;
-using UnityEngine.Rendering;
 
 namespace TransformAnarchy
 {
@@ -45,6 +45,15 @@ namespace TransformAnarchy
 
         public GameObject UITransform;
 
+        // Coord text-entry UI - not part of the main UI prefab so we build it by hand
+        private GameObject _coordDisplayGO;
+        private TACoordDisplay _coordDisplay;
+        private bool _coordDisplayVisible = false;
+        private GameObject _coordDisplayToggleGO;
+        private UIButton UICoordDisplayToggle;
+        private Sprite _coordToggleOpenSprite;
+        private Sprite _coordToggleCloseSprite;
+
         public struct UIButton
         {
             public Button button;
@@ -67,10 +76,36 @@ namespace TransformAnarchy
         public UIButton UIPivotEdit;
         public UIButton UIPivotCancel;
 
+        // Blueprint scale
+        private float _blueprintScale = 1.0f;
+        public float BlueprintScale => _blueprintScale;
+
+        // Blueprint scaling is a single player only feature
+        public bool BlueprintScalingEnabled => TA.TASettings.enableBlueprintScaling && !CommandController.Instance.isInMultiplayerMode();
+
+        public void UpdateBlueprintScaleFromInput()
+        {
+            if (!(CurrentBuilder is BlueprintBuilder) || UIUtility.isInputFieldFocused())
+                return;
+
+            if (!BlueprintScalingEnabled)
+                return;
+
+            if (InputManager.getKey("BuildingIncreaseObjectSize"))
+                _blueprintScale = Mathf.Min(10f, _blueprintScale + 0.01f);
+            else if (InputManager.getKey("BuildingDecreaseObjectSize"))
+                _blueprintScale = Mathf.Max(0.1f, _blueprintScale - 0.01f);
+        }
+
         // Flags
         public bool UseTransformFromLastBuilder = false;
         public bool PipetteWaitForMouseUp = false;
         private bool _alreadyToggledThisFrame = false;
+
+        // Edit-placed-object state
+        private TAObjectPipetteTool _editPipetteTool;
+        private BuildableObject _editTarget;
+        private Builder _editBuilder;
 
         // We cannot directly build the builder. So we instead do this.
         public bool ForceBuildThisFrame = false;
@@ -96,6 +131,7 @@ namespace TransformAnarchy
             {
                 if (!AllowedBuilderTypes.Contains(builder.GetType()))
                 {
+                    Debug.Log("TA: TAController OnBuilderEnable");
                     OnBuilderDisable();
                     return;
                 }
@@ -121,7 +157,11 @@ namespace TransformAnarchy
                 return;
             }
 
-            UseTransformFromLastBuilder = GizmoEnabled && CurrentBuilder.GetType() == typeof(DecoBuilder);
+            Debug.Log("TA: TAController OnBuilderDisable");
+
+            UseTransformFromLastBuilder = GizmoEnabled &&
+                (CurrentBuilder.GetType() == typeof(DecoBuilder) ||
+                 CurrentBuilder.GetType() == typeof(BlueprintBuilder));
             StartCoroutine(StoppedBuildingWatch());
 
             CurrentBuilder = null;
@@ -131,7 +171,11 @@ namespace TransformAnarchy
             rotationalGizmo.SetActiveGizmo(false);
             CurrentTool = Tool.MOVE;
             CurrentSpace = ToolSpace.LOCAL;
+            _coordDisplayVisible = false;
+            _blueprintScale = 1f;
 
+            // Clear the pivot offset on Gizmo close as it was carrying over to "move existing object" mode
+            ResetPivot();
             ClearBuilderGrid();
             UpdateUIContent();
 
@@ -204,7 +248,7 @@ namespace TransformAnarchy
 
         public void SetGizmoEnabled(bool setTo, bool setGizmoCurrentState = false)
         {
-
+            Debug.Log("TA: SetGizmoEnabled " + setTo.ToString());
             GizmoEnabled = setTo;
             GizmoCurrentState = setGizmoCurrentState;
 
@@ -271,6 +315,12 @@ namespace TransformAnarchy
 
         }
 
+        public void ToggleCoordDisplay()
+        {
+            _coordDisplayVisible = !_coordDisplayVisible;
+            UpdateUIContent();
+        }
+
         public void ToggleGizmoTool()
         {
             switch (CurrentTool)
@@ -311,7 +361,6 @@ namespace TransformAnarchy
 
         public void UpdateUIContent()
         {
-
             // Pivot editing update
             UIBuildButton.button.interactable = !IsEditingOrigin;
 
@@ -325,7 +374,27 @@ namespace TransformAnarchy
             UISpaceButton.tooltip.text = (CurrentSpace == ToolSpace.LOCAL) ? "Global space" : "Local space";
 
             // Main update
-            UITransform.SetActive(CurrentBuilder != null && GizmoEnabled);
+            bool showUI = CurrentBuilder != null && GizmoEnabled;
+            UITransform.SetActive(showUI);
+
+            if (_coordDisplayToggleGO != null)
+            {
+                _coordDisplayToggleGO.SetActive(showUI);
+                if (showUI)
+                    UICoordDisplayToggle.icon.sprite = _coordDisplayVisible ? _coordToggleCloseSprite : _coordToggleOpenSprite;
+            }
+
+            if (_coordDisplayGO != null)
+            {
+                _coordDisplayGO.SetActive(showUI && _coordDisplayVisible);
+                if (showUI && _coordDisplayVisible && _coordDisplay != null)
+                {
+                    if (CurrentTool == Tool.MOVE)
+                        _coordDisplay.ShowPositionMode();
+                    else
+                        _coordDisplay.ShowRotationMode();
+                }
+            }
         }
 
         public void UpdateUIPosition()
@@ -337,9 +406,13 @@ namespace TransformAnarchy
             }
 
             // left and up relative to cam from position of gizmo, with width calced
-            UITransform.transform.position = _cachedMaincam.WorldToScreenPoint(
+            Vector3 uiScreenPos = _cachedMaincam.WorldToScreenPoint(
                 positionalGizmo.transform.position +
                 _cachedMaincam.transform.rotation * (new Vector3(0.9f, 0.9f, 0) * BuilderSize));
+
+            UITransform.transform.position = uiScreenPos;
+
+            // coord UI pieces are children of UITransform so they follow it (and the canvas scale) on their own
 
         }
 
@@ -489,13 +562,162 @@ namespace TransformAnarchy
             UIGizmoToggleButton.button.onClick.AddListener(() => SetGizmoEnabled(!GizmoEnabled));
             UIResetRotationButton.button.onClick.AddListener(ResetGizmoRotation);
 
-            Debug.Log("TA: transform Anarchy initialized");
+            // coord display panel - child of UITransform so it inherits position and canvas scaling
+            RectTransform uiHolderRT = UITransform.GetComponent<RectTransform>();
+
+            _coordDisplayGO = new GameObject("TA_CoordDisplay");
+            _coordDisplayGO.transform.SetParent(UITransform.transform, false);
+            RectTransform coordRT = _coordDisplayGO.AddComponent<RectTransform>();
+            coordRT.anchorMin = uiHolderRT.pivot;
+            coordRT.anchorMax = uiHolderRT.pivot;
+            coordRT.pivot = new Vector2(0.5f, 0.5f);
+            coordRT.sizeDelta = Vector2.zero;
+            coordRT.anchoredPosition = new Vector2(81f, -93.75f); // canvas units, offset from the button cluster
+            LayoutElement coordLE = _coordDisplayGO.AddComponent<LayoutElement>();
+            coordLE.ignoreLayout = true; // in case the prefab root has a layout group
+            _coordDisplay = _coordDisplayGO.AddComponent<TACoordDisplay>();
+            _coordDisplay.Initialize();
+            _coordDisplay.OnPositionCommit += OnCoordPositionCommit;
+            _coordDisplay.OnRotationCommit += OnCoordRotationCommit;
+            _coordDisplayGO.SetActive(false);
+
+            // Coord display toggle buttons
+            var openTex = TA.GetLooseTexture(TA.LOOSE_TEXTURES.NUMERIC_ENTRY_OPEN_BUTTON);
+            _coordToggleOpenSprite = Sprite.Create(openTex, new Rect(0, 0, openTex.width, openTex.height), new Vector2(0.5f, 0.5f));
+            var closeTex = TA.GetLooseTexture(TA.LOOSE_TEXTURES.NUMERIC_ENTRY_CLOSE_BUTTON);
+            _coordToggleCloseSprite = Sprite.Create(closeTex, new Rect(0, 0, closeTex.width, closeTex.height), new Vector2(0.5f, 0.5f));
+
+            _coordDisplayToggleGO = new GameObject("TA_CoordDisplayToggle");
+            _coordDisplayToggleGO.transform.SetParent(UITransform.transform, false);
+
+            RectTransform toggleRT = _coordDisplayToggleGO.AddComponent<RectTransform>();
+            toggleRT.sizeDelta = new Vector2(30f, 30f);
+            toggleRT.anchorMin = uiHolderRT.pivot;
+            toggleRT.anchorMax = uiHolderRT.pivot;
+            toggleRT.anchoredPosition = new Vector2(48.75f, -33f); // canvas units, offset from the button cluster
+            LayoutElement toggleLE = _coordDisplayToggleGO.AddComponent<LayoutElement>();
+            toggleLE.ignoreLayout = true; // in case the prefab root has a layout group
+
+            Image toggleBg = _coordDisplayToggleGO.AddComponent<Image>();
+            toggleBg.sprite = TA.InfoPipCircleSprite;
+            toggleBg.color = new Color(0.65f, 1f, 1f, 0.45f);
+
+            Button toggleBtn = _coordDisplayToggleGO.AddComponent<Button>();
+            toggleBtn.targetGraphic = toggleBg;
+
+            GameObject toggleIconGO = new GameObject("Image");
+            toggleIconGO.transform.SetParent(_coordDisplayToggleGO.transform, false);
+            RectTransform toggleIconRT = toggleIconGO.AddComponent<RectTransform>();
+            toggleIconRT.anchorMin = Vector2.zero;
+            toggleIconRT.anchorMax = Vector2.one;
+            toggleIconRT.sizeDelta = Vector2.zero;
+            toggleIconRT.anchoredPosition = Vector2.zero;
+            Image toggleIcon = toggleIconGO.AddComponent<Image>();
+            toggleIcon.sprite = _coordToggleOpenSprite;
+
+            UITooltip toggleTip = _coordDisplayToggleGO.AddComponent<UITooltip>();
+            toggleTip.context = "Transform Anarchy";
+            toggleTip.text = "Toggle numeric entry";
+
+            UICoordDisplayToggle = new UIButton(toggleBtn, toggleIcon, toggleTip);
+            toggleBtn.onClick.AddListener(ToggleCoordDisplay);
+            _coordDisplayToggleGO.SetActive(false);
+
+            Debug.Log("TA: TAController OnEnable finished");
 
             UpdateUIContent();
 
         }
 
-        // basically wait two frames in order to make sure 
+        public void Update()
+        {
+            // Tick the picker tool while it is active
+            if (_editPipetteTool != null && GameController.Instance.isActiveMouseTool(_editPipetteTool))
+            {
+                _editPipetteTool.tick();
+            }
+
+            // Start picker when toggleGizmoOn is pressed and no builder is active
+            if (CurrentBuilder == null && _editPipetteTool == null
+                && !_alreadyToggledThisFrame
+                && InputManager.getKeyDown("toggleGizmoOn")
+                && !UIUtility.isInputFieldFocused())
+            {
+                StartEditPickerMode();
+            }
+        }
+
+        private void StartEditPickerMode()
+        {
+            Debug.Log("TA: Starting edit picker mode");
+            _editPipetteTool = new TAObjectPipetteTool();
+            _editPipetteTool.OnObjectSelected += OnEditPickerObjectSelected;
+            _editPipetteTool.OnRemoved += () => { _editPipetteTool = null; };
+            GameController.Instance.enableMouseTool(_editPipetteTool);
+        }
+
+        private void OnEditPickerObjectSelected(BuildableObject buildableObject)
+        {
+            GameController.Instance.removeMouseTool(_editPipetteTool);
+            // _editPipetteTool is cleared by the OnRemoved handler above
+
+            // I think this check is redundant but keeping for safety
+            Deco deco = buildableObject as Deco;
+            if (deco == null) return;
+
+            Debug.Log("TA: Edit picker selected deco: " + deco.getReferenceName());
+            _editTarget = deco;
+            // SP only - hiding it kills the collider, which in MP would make destructCollidingObjects() differ per peer and desync. MP removes it with a synced DestructCommand instead (see OnEditBuilderBuildTriggered)
+            if (!CommandController.Instance.isInMultiplayerMode())
+                deco.gameObject.SetActive(false);
+            
+            // Position the gizmo at the original object before the builder is created
+            UseTransformFromLastBuilder = true;
+            PipetteWaitForMouseUp = true;
+            SetGizmoEnabled(true);
+            SetGizmoTransform(deco.logicTransform.position, deco.logicTransform.rotation);
+
+            // Create a builder from the clean prefab so we don't mutate the placed object
+            BuildableObject prefab = ScriptableSingleton<AssetManager>.Instance.getPrefab<BuildableObject>(deco.getReferenceName());
+            _editBuilder = prefab.instantiateBuilder();
+            Traverse editBuilderTrv = Traverse.Create(_editBuilder);
+            editBuilderTrv.Field("rotation").SetValue(deco.logicTransform.rotation);
+            editBuilderTrv.Field("ghostPos").SetValue(deco.logicTransform.position);
+            _editBuilder.setFixedGhostHeightIfRaised(deco.logicTransform.position);
+            _editBuilder.copySettingsFrom(deco);
+
+            _editBuilder.OnBuildTriggered += OnEditBuilderBuildTriggered;
+            _editBuilder.OnCancelled += OnEditBuilderCancelled;
+        }
+
+        private void OnEditBuilderBuildTriggered()
+        {
+            Debug.Log("TA: OnEditBuilderBuildTriggered");
+            if (_editTarget != null)
+            {
+                Debug.Log("TA: Has _editTarget");
+                // turn it back on (might've been hidden in SP) so destruct() hits a live object, then kill it through a DestructCommand - same objectID/tick on every peer, and it keeps the refund/cleanup that a raw Destroy skips
+                _editTarget.gameObject.SetActive(true);
+                CommandController.Instance.addCommand<DestructCommand>(new DestructCommand(_editTarget));
+                _editTarget = null;
+            }
+            // Detach so subsequent placements (DecoBuilder stays open) don't re-fire
+            if (_editBuilder != null)
+                _editBuilder.OnBuildTriggered -= OnEditBuilderBuildTriggered;
+        }
+
+        private void OnEditBuilderCancelled()
+        {
+            Debug.Log("TA: OnEditBuilderCancelled");
+            if (_editTarget != null)
+            {
+                _editTarget.gameObject.SetActive(true);
+                _editTarget = null;
+            }
+            _editBuilder = null;
+        }
+
+        // basically wait two frames in order to make sure
         public IEnumerator StoppedBuildingWatch()
         {
             yield return null;
@@ -516,8 +738,21 @@ namespace TransformAnarchy
             _alreadyToggledThisFrame = false;
         }
 
+        private void OnCoordPositionCommit(Vector3 newPos)
+        {
+            if (CurrentSpace == ToolSpace.LOCAL)
+                newPos = rotationalGizmo.transform.rotation * newPos;
+            SetGizmoTransform(newPos, rotationalGizmo.transform.rotation);
+        }
+
+        private void OnCoordRotationCommit(Vector3 newEuler)
+        {
+            SetGizmoTransform(positionalGizmo.transform.position, Quaternion.Euler(newEuler));
+        }
+
         public void OnDisable()
         {
+            Debug.Log("TA: TAController.OnDisable");
 
             UIToolButton.button.onClick.RemoveListener(ToggleGizmoTool);
             UISpaceButton.button.onClick.RemoveListener(ToggleGizmoSpace);
@@ -527,6 +762,27 @@ namespace TransformAnarchy
             UIBuildButton.button.onClick.RemoveListener(() => ForceBuildThisFrame = true && !IsEditingOrigin);
             UIGizmoToggleButton.button.onClick.RemoveListener(() => SetGizmoEnabled(!GizmoEnabled));
             UIResetRotationButton.button.onClick.RemoveListener(ResetGizmoRotation);
+
+            if (_coordDisplay != null)
+            {
+                _coordDisplay.OnPositionCommit -= OnCoordPositionCommit;
+                _coordDisplay.OnRotationCommit -= OnCoordRotationCommit;
+                _coordDisplay = null;
+            }
+            if (_coordDisplayGO != null)
+            {
+                Destroy(_coordDisplayGO);
+                _coordDisplayGO = null;
+            }
+            if (UICoordDisplayToggle.button != null)
+                UICoordDisplayToggle.button.onClick.RemoveListener(ToggleCoordDisplay);
+            if (_coordDisplayToggleGO != null)
+            {
+                Destroy(_coordDisplayToggleGO);
+                _coordDisplayToggleGO = null;
+            }
+            _coordToggleOpenSprite = null;
+            _coordToggleCloseSprite = null;
 
             Destroy(UITransform);
 
@@ -543,9 +799,6 @@ namespace TransformAnarchy
             // Clear bit
             if (_cachedMaincam == null) return;
             _cachedMaincam.cullingMask = _cachedMaincam.cullingMask & (~Gizmo<PositionalGizmoComponent>.LAYER_MASK);
-
-            Debug.Log($"TA - Disabled");
-
         }
 
         public void OnBeforeInit()
@@ -649,16 +902,13 @@ namespace TransformAnarchy
                 _dontUpdateGrid = false;
             }
 
-            // Reimplement size hotkeys directly
-            if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
+            // size hotkeys, done here directly. BlueprintBuilder scaling lives in BuilderFunctions.MainTAPrefix so it works with the gizmo/UI open or not
+            if (!(CurrentBuilder is BlueprintBuilder))
             {
-                BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { 0.01f });
-
-
-            }
-            else if (InputManager.getKey("BuildingDecreaseObjectSize") && !UIUtility.isInputFieldFocused())
-            {
-                BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { -0.01f });
+                if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
+                    BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { 0.01f });
+                else if (InputManager.getKey("BuildingDecreaseObjectSize") && !UIUtility.isInputFieldFocused())
+                    BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { -0.01f });
             }
 
             // Keybinds
@@ -730,6 +980,21 @@ namespace TransformAnarchy
 
             // Update UI position
             UpdateUIPosition();
+
+            // Feed current gizmo transform into the coordinate display
+            if (_coordDisplay != null && _coordDisplayGO != null && _coordDisplayGO.activeSelf)
+            {
+                if (CurrentSpace == ToolSpace.LOCAL)
+                {
+                    var rot = rotationalGizmo.transform.rotation;
+                    _coordDisplay.UpdatePosition(Quaternion.Inverse(rot) * positionalGizmo.transform.position);
+                }
+                else
+                {
+                    _coordDisplay.UpdatePosition(positionalGizmo.transform.position);
+                }
+                _coordDisplay.UpdateRotation(rotationalGizmo.transform.rotation.eulerAngles);
+            }
 
         }
     }
