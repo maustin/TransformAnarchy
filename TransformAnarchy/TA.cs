@@ -144,6 +144,11 @@ namespace TransformAnarchy
             guistyleTextMiddle.margin = new RectOffset(0, 10, 10, 0);
             guistyleTextMiddle.alignment = TextAnchor.MiddleCenter;
 
+            GUIStyle guistyleTextSmall = new GUIStyle(GUI.skin.label);
+            guistyleTextSmall.margin = new RectOffset(0, 0, 16, 0);
+            guistyleTextSmall.alignment = TextAnchor.MiddleLeft;
+            guistyleTextSmall.fontSize = Mathf.RoundToInt(guistyleTextSmall.fontSize * 0.65f);
+
             GUIStyle guistyleField = new GUIStyle(GUI.skin.textField);
             guistyleField.margin = new RectOffset(0, 10, 10, 0);
             guistyleField.alignment = TextAnchor.MiddleCenter;
@@ -169,10 +174,16 @@ namespace TransformAnarchy
 
             GUILayout.Space(10);
 
-            TASettings.enableBlueprintScaling = GUILayout.Toggle(TASettings.enableBlueprintScaling, " Enable Blueprint scaling");
-            GUILayout.Label("Blueprint scaling is not supported in Multiplayer.", guistyleTextMiddle);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Enable Blueprint scaling", guistyleTextLeft, GUILayout.Width(175));
+            GUILayout.BeginVertical();
+            GUILayout.Space(12);
+            TASettings.enableBlueprintScaling = GUILayout.Toggle(TASettings.enableBlueprintScaling, " ");
+            GUILayout.EndVertical();
+            GUILayout.Label("Blueprint scaling is not supported in Multiplayer.", guistyleTextSmall);
+            GUILayout.EndHorizontal();
 
-            GUILayout.Space(10);
+            GUILayout.Space(40);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Advanced settings", guistyleButton, GUILayout.Width(125))) {
                 TASettings.showAdvancedSettings = !TASettings.showAdvancedSettings;
