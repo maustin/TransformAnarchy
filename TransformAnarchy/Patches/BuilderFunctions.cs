@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Reflection;
 using HarmonyLib;
-using Parkitect;
 using UnityEngine;
 
 
@@ -37,6 +33,8 @@ namespace TransformAnarchy
         public static FieldInfo onlyBuildOneField = AccessTools.Field(typeof(Builder), "onlyBuildOne");
 
         public static Quaternion? PendingBlueprintRotation;
+        public static float? PendingBlueprintScale;
+        public static float? AppliedBlueprintScale;
 
         // Per-axis scale to apply to the next build.
         // Set immediately before invoking buildObjects.
@@ -77,6 +75,14 @@ namespace TransformAnarchy
                 refreshRepresentation = true;
             }
 
+            // Not gated on the gizmo so size hotkeys still work with the UI closed - keep the ghost and scale in sync every frame so a gizmo-off build scales too
+            if (b is BlueprintBuilder && TA.MainController.BlueprintScalingEnabled)
+            {
+                TA.MainController.UpdateBlueprintScaleFromInput();
+                ___ghost.transform.localScale = Vector3.one * TA.MainController.BlueprintScale;
+                PendingBlueprintScale = TA.MainController.BlueprintScale;
+                AppliedBlueprintScale = TA.MainController.BlueprintScale;
+            }
 
             if (TA.MainController.GizmoEnabled)
             {
@@ -126,12 +132,20 @@ namespace TransformAnarchy
                 ___ghost.transform.position = curPos;
                 ___ghost.transform.rotation = curRot;
 
-                // Apply per-axis scale to the ghost preview.
-                // Composes multiplicatively with whatever CustomSize already on the child buildable's localScale since this is the ghost root (parent container).
-                Vector3 curScale = TA.MainController.CurrentScale;
-                if (___ghost.transform.localScale != curScale)
+                // Update visual ghost scale. Blueprints use a uniform scale factor; everything else uses TA's per-axis scale.
+                if (b is BlueprintBuilder)
                 {
-                    ___ghost.transform.localScale = curScale;
+                    ___ghost.transform.localScale = Vector3.one * TA.MainController.BlueprintScale;
+                }
+                else
+                {
+                    // Apply per-axis scale to the ghost preview.
+                    // Composes multiplicatively with whatever CustomSize already on the child buildable's localScale since this is the ghost root (parent container).
+                    Vector3 curScale = TA.MainController.CurrentScale;
+                    if (___ghost.transform.localScale != curScale)
+                    {
+                        ___ghost.transform.localScale = curScale;
+                    }
                 }
 
                 // Update place at ghost position
@@ -176,6 +190,11 @@ namespace TransformAnarchy
                         {
                             onlyBuildOneField.SetValue(b, false);
                             PendingBlueprintRotation = curRot;
+                            if (TA.MainController.BlueprintScalingEnabled)
+                            {
+                                PendingBlueprintScale = TA.MainController.BlueprintScale;
+                                AppliedBlueprintScale = TA.MainController.BlueprintScale;
+                            }
                         }
 
                         // Set the per-axis scale override so the post-build patch applies it to every placed BuildableObject.
@@ -185,15 +204,20 @@ namespace TransformAnarchy
                         {
                             PatchUtils.InvokeParamless(typeof(Builder), b, BuilderFunctions.buildObjects);
                         }
+                        catch (Exception e)
+                        {
+                            Debug.LogError("TA: buildObjects threw during placement (build skipped): " + e);
+                        }
                         finally
                         {
                             PendingBuildScale = null;
-                        }
-
-                        if (isBlueprintBuilder)
-                        {
-                            onlyBuildOneField.SetValue(b, true);
-                            PendingBlueprintRotation = null;
+                            if (isBlueprintBuilder)
+                            {
+                                onlyBuildOneField.SetValue(b, true);
+                                PendingBlueprintRotation = null;
+                                PendingBlueprintScale = null;
+                                // leave AppliedBlueprintScale set - the onAfterBuild postfix clears it
+                            }
                         }
                     }
                     else

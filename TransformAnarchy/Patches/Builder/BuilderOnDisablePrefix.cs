@@ -1,6 +1,6 @@
 ﻿using HarmonyLib;
 using System.Reflection;
-using UnityEngine;
+using TransformAnarchy;
 
 [HarmonyPatch]
 public class BuilderOnDisablePrefix {
@@ -8,8 +8,7 @@ public class BuilderOnDisablePrefix {
 
     [HarmonyPrefix]
     public static bool Prefix() {
-        Debug.Log("TA: Builder.OnDisable Prefix");
-
+        TA.MainController.OnBuilderDisable();
         return true;
     }
 }

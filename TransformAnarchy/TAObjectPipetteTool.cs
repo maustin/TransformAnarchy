@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace TransformAnarchy
 {
     public class TAObjectPipetteTool : AbstractPipetteTool

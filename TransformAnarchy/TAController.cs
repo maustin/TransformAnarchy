@@ -82,6 +82,27 @@ namespace TransformAnarchy
         public UIButton UIPivotEdit;
         public UIButton UIPivotCancel;
 
+        // Blueprint scale
+        private float _blueprintScale = 1.0f;
+        public float BlueprintScale => _blueprintScale;
+
+        // Blueprint scaling is a single player only feature
+        public bool BlueprintScalingEnabled => TA.TASettings.enableBlueprintScaling && !CommandController.Instance.isInMultiplayerMode();
+
+        public void UpdateBlueprintScaleFromInput()
+        {
+            if (!(CurrentBuilder is BlueprintBuilder) || UIUtility.isInputFieldFocused())
+                return;
+
+            if (!BlueprintScalingEnabled)
+                return;
+
+            if (InputManager.getKey("BuildingIncreaseObjectSize"))
+                _blueprintScale = Mathf.Min(10f, _blueprintScale + 0.01f);
+            else if (InputManager.getKey("BuildingDecreaseObjectSize"))
+                _blueprintScale = Mathf.Max(0.1f, _blueprintScale - 0.01f);
+        }
+
         // Flags
         public bool UseTransformFromLastBuilder = false;
         public bool PipetteWaitForMouseUp = false;
@@ -167,7 +188,10 @@ namespace TransformAnarchy
             CurrentSpace = ToolSpace.LOCAL;
             CurrentScale = Vector3.one;
             _coordDisplayVisible = false;
+            _blueprintScale = 1f;
 
+            // Clear the pivot offset on Gizmo close as it was carrying over to "move existing object" mode
+            ResetPivot();
             ClearBuilderGrid();
             UpdateUIContent();
 
@@ -362,7 +386,6 @@ namespace TransformAnarchy
 
         public void UpdateUIContent()
         {
-
             // Pivot editing update
             UIBuildButton.button.interactable = !IsEditingOrigin;
 
@@ -433,15 +456,7 @@ namespace TransformAnarchy
 
             UITransform.transform.position = uiScreenPos;
 
-            if (_coordDisplayToggleGO != null)
-            {
-                _coordDisplayToggleGO.transform.position = uiScreenPos + new Vector3(78f, -53f, 0f);
-            }
-
-            if (_coordDisplayGO != null)
-            {
-                _coordDisplayGO.transform.position = uiScreenPos + new Vector3(130f, -150f, 0f);
-            }
+            // coord UI pieces are children of UITransform so they follow it (and the canvas scale) on their own
 
         }
 
@@ -601,9 +616,19 @@ namespace TransformAnarchy
             UIGizmoToggleButton.button.onClick.AddListener(() => SetGizmoEnabled(!GizmoEnabled));
             UIResetRotationButton.button.onClick.AddListener(ResetGizmoRotation);
 
-            // Coordinate display panel (sibling of UITransform so it can be positioned independently)
+            // coord display panel - child of UITransform so it inherits position and canvas scaling
+            RectTransform uiHolderRT = UITransform.GetComponent<RectTransform>();
+
             _coordDisplayGO = new GameObject("TA_CoordDisplay");
-            _coordDisplayGO.transform.SetParent(Parkitect.UI.UIWorldOverlayController.Instance.transform, false);
+            _coordDisplayGO.transform.SetParent(UITransform.transform, false);
+            RectTransform coordRT = _coordDisplayGO.AddComponent<RectTransform>();
+            coordRT.anchorMin = uiHolderRT.pivot;
+            coordRT.anchorMax = uiHolderRT.pivot;
+            coordRT.pivot = new Vector2(0.5f, 0.5f);
+            coordRT.sizeDelta = Vector2.zero;
+            coordRT.anchoredPosition = new Vector2(81f, -93.75f); // canvas units, offset from the button cluster
+            LayoutElement coordLE = _coordDisplayGO.AddComponent<LayoutElement>();
+            coordLE.ignoreLayout = true; // in case the prefab root has a layout group
             _coordDisplay = _coordDisplayGO.AddComponent<TACoordDisplay>();
             _coordDisplay.Initialize();
             _coordDisplay.OnPositionCommit += OnCoordPositionCommit;
@@ -618,10 +643,15 @@ namespace TransformAnarchy
             _coordToggleCloseSprite = Sprite.Create(closeTex, new Rect(0, 0, closeTex.width, closeTex.height), new Vector2(0.5f, 0.5f));
 
             _coordDisplayToggleGO = new GameObject("TA_CoordDisplayToggle");
-            _coordDisplayToggleGO.transform.SetParent(Parkitect.UI.UIWorldOverlayController.Instance.transform, false);
+            _coordDisplayToggleGO.transform.SetParent(UITransform.transform, false);
 
             RectTransform toggleRT = _coordDisplayToggleGO.AddComponent<RectTransform>();
             toggleRT.sizeDelta = new Vector2(30f, 30f);
+            toggleRT.anchorMin = uiHolderRT.pivot;
+            toggleRT.anchorMax = uiHolderRT.pivot;
+            toggleRT.anchoredPosition = new Vector2(48.75f, -33f); // canvas units, offset from the button cluster
+            LayoutElement toggleLE = _coordDisplayToggleGO.AddComponent<LayoutElement>();
+            toggleLE.ignoreLayout = true; // in case the prefab root has a layout group
 
             Image toggleBg = _coordDisplayToggleGO.AddComponent<Image>();
             toggleBg.sprite = TA.InfoPipCircleSprite;
@@ -684,14 +714,17 @@ namespace TransformAnarchy
         private void OnEditPickerObjectSelected(BuildableObject buildableObject)
         {
             GameController.Instance.removeMouseTool(_editPipetteTool);
-            // _editPipetteTool is nulled by the OnRemoved handler
+            // _editPipetteTool is cleared by the OnRemoved handler above
 
+            // I think this check is redundant but keeping for safety
             Deco deco = buildableObject as Deco;
             if (deco == null) return;
 
-            Debug.Log("TA: Edit picker selected: " + deco.getReferenceName());
+            Debug.Log("TA: Edit picker selected deco: " + deco.getReferenceName());
             _editTarget = deco;
-            deco.gameObject.SetActive(false);
+            // SP only - hiding it kills the collider, which in MP would make destructCollidingObjects() differ per peer and desync. MP removes it with a synced DestructCommand instead (see OnEditBuilderBuildTriggered)
+            if (!CommandController.Instance.isInMultiplayerMode())
+                deco.gameObject.SetActive(false);
             
             // Position the gizmo at the original object before the builder is created
             UseTransformFromLastBuilder = true;
@@ -718,7 +751,9 @@ namespace TransformAnarchy
             if (_editTarget != null)
             {
                 Debug.Log("TA: Has _editTarget");
-                UnityEngine.Object.Destroy(_editTarget.gameObject);
+                // turn it back on (might've been hidden in SP) so destruct() hits a live object, then kill it through a DestructCommand - same objectID/tick on every peer, and it keeps the refund/cleanup that a raw Destroy skips
+                _editTarget.gameObject.SetActive(true);
+                CommandController.Instance.addCommand<DestructCommand>(new DestructCommand(_editTarget));
                 _editTarget = null;
             }
             // Detach so subsequent placements (DecoBuilder stays open) don't re-fire
@@ -935,16 +970,13 @@ namespace TransformAnarchy
                 _dontUpdateGrid = false;
             }
 
-            // Reimplement size hotkeys directly
-            if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
+            // size hotkeys, done here directly. BlueprintBuilder scaling lives in BuilderFunctions.MainTAPrefix so it works with the gizmo/UI open or not
+            if (!(CurrentBuilder is BlueprintBuilder))
             {
-                BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { 0.01f });
-
-
-            }
-            else if (InputManager.getKey("BuildingDecreaseObjectSize") && !UIUtility.isInputFieldFocused())
-            {
-                BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { -0.01f });
+                if (InputManager.getKey("BuildingIncreaseObjectSize") && !UIUtility.isInputFieldFocused())
+                    BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { 0.01f });
+                else if (InputManager.getKey("BuildingDecreaseObjectSize") && !UIUtility.isInputFieldFocused())
+                    BuilderFunctions.changeSize.Invoke(CurrentBuilder, new object[] { -0.01f });
             }
 
             // Keybinds

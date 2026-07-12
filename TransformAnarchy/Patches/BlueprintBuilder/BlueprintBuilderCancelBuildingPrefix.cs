@@ -3,8 +3,7 @@ using System.Reflection;
 using UnityEngine;
 
 [HarmonyPatch]
-public class BuilderCancelBuildingPatch {
-    //static MethodBase TargetMethod() => AccessTools.Method(typeof(Builder), "cancelBuilding");
+public class BlueprintBuilderCancelBuildingPrefix {
     static MethodBase TargetMethod() => AccessTools.Method(typeof(BlueprintBuilder), "cancelBuilding");
 
     [HarmonyPrefix]

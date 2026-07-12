@@ -9,7 +9,7 @@ namespace TransformAnarchy
 {
     public class TA : AbstractMod, IModSettings
     {
-        public const string VERSION_NUMBER = "1.4.PerAxisScaling";
+        public const string VERSION_NUMBER = "1.4.1.PerAxisScaling";
         public override string getIdentifier() => "com.parkitectCommunity.TA";
         public override string getName() => "Transform Anarchy";
         public override string getDescription() => @"Adds an advanced building gizmo for select building types.";
@@ -157,6 +157,11 @@ namespace TransformAnarchy
             guistyleTextMiddle.margin = new RectOffset(0, 10, 10, 0);
             guistyleTextMiddle.alignment = TextAnchor.MiddleCenter;
 
+            GUIStyle guistyleTextSmall = new GUIStyle(GUI.skin.label);
+            guistyleTextSmall.margin = new RectOffset(0, 0, 16, 0);
+            guistyleTextSmall.alignment = TextAnchor.MiddleLeft;
+            guistyleTextSmall.fontSize = Mathf.RoundToInt(guistyleTextSmall.fontSize * 0.65f);
+
             GUIStyle guistyleField = new GUIStyle(GUI.skin.textField);
             guistyleField.margin = new RectOffset(0, 10, 10, 0);
             guistyleField.alignment = TextAnchor.MiddleCenter;
@@ -171,18 +176,32 @@ namespace TransformAnarchy
             GUILayout.BeginHorizontal();
             GUILayout.Label("Version", guistyleTextLeft, GUILayout.Width(175));
             GUILayout.Label(VERSION_NUMBER, guistyleTextMiddle);
-            if (GUILayout.Button("Advanced settings", guistyleButton, GUILayout.Width(125)))
-            {
-                TASettings.showAdvancedSettings = !TASettings.showAdvancedSettings;
-                onDrawSettingsUI();
-            }
             GUILayout.EndHorizontal();
 
-            GUILayout.Space(30);
+            GUILayout.Space(10);
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("Default rotation angle", guistyleTextLeft, GUILayout.Width(175));
             rotationAngleString = GUILayout.TextField(rotationAngleString, 7, guistyleField);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(10);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Enable Blueprint scaling", guistyleTextLeft, GUILayout.Width(175));
+            GUILayout.BeginVertical();
+            GUILayout.Space(12);
+            TASettings.enableBlueprintScaling = GUILayout.Toggle(TASettings.enableBlueprintScaling, " ");
+            GUILayout.EndVertical();
+            GUILayout.Label("Blueprint scaling is not supported in Multiplayer.", guistyleTextSmall);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(40);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Advanced settings", guistyleButton, GUILayout.Width(125))) {
+                TASettings.showAdvancedSettings = !TASettings.showAdvancedSettings;
+                onDrawSettingsUI();
+            }
             GUILayout.EndHorizontal();
 
             if (TASettings.showAdvancedSettings == true)
@@ -216,12 +235,6 @@ namespace TransformAnarchy
                 TASettings.gizmoRenderBehaviourString = GUILayout.SelectionGrid(TASettings.gizmoRenderBehaviourString, gizmoRenderBehaviourString, 2, guistyleButton);
                 GUILayout.EndHorizontal();
             }
-
-            GUILayout.Space(50);
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Vertical rotation on blueprints and flatrides is not supported", guistyleTextMiddle);
-            GUILayout.EndHorizontal();
 
             // Check the values when enter is pressed
             if (Event.current.isKey && Event.current.keyCode == KeyCode.Return)
@@ -273,6 +286,8 @@ namespace TransformAnarchy
 
         public void RegisterHotkeys()
         {
+            Debug.Log("TA: RegisterHotkeys");
+
             _keys = new KeybindManager("TA_KEYS", "Transform Anarchy");
 
             _keys.AddKeybind("togglePivotEdit", "Toggle Pivot Offset", "Toggles whether the pivot or the object will move.", UnityEngine.KeyCode.U);
@@ -289,6 +304,8 @@ namespace TransformAnarchy
 
         public void UnregisterHotkeys()
         {
+            Debug.Log("TA: UnregisterHotkeys");
+
             _keys.UnregisterAll();
         }
 
